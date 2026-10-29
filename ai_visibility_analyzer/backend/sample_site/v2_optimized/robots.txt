@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# GEO Best Practice: Allow all AI Search Crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /

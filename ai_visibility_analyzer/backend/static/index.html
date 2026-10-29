@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Visibility & GEO Analyzer - Executive Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #090d16;
+            --bg-surface: #0f172a;
+            --bg-card: rgba(30, 41, 59, 0.65);
+            --bg-card-hover: rgba(51, 65, 85, 0.75);
+            --border-color: rgba(148, 163, 184, 0.12);
+            --border-highlight: rgba(99, 102, 241, 0.35);
+            --accent-primary: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.25);
+            --accent-emerald: #10b981;
+            --accent-rose: #f43f5e;
+            --accent-amber: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.10) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        /* Top Header */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(16px);
+            background: rgba(9, 13, 22, 0.85);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .logo-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: #34d399;
+            box-shadow: 0 0 8px #34d399;
+        }
+
+        .btn-link {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            font-weight: 500;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-link:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Hero */
+        .hero {
+            max-width: 1200px;
+            margin: 2.5rem auto 1.5rem auto;
+            padding: 0 1.5rem;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.75rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.2;
+            margin-bottom: 0.75rem;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 750px;
+            margin: 0 auto;
+        }
+
+        /* Container & Tabs */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .tab-nav {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .tab-btn.active {
+            color: #ffffff;
+            background: var(--accent-primary);
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        /* Section Layouts */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.75rem;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: var(--border-highlight);
+        }
+
+        /* Grid */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.75rem;
+        }
+
+        /* Side-by-side Experiment Cards */
+        .experiment-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .experiment-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .card-v1::before { background: linear-gradient(90deg, #f43f5e, #fb7185); }
+        .card-v2::before { background: linear-gradient(90deg, #10b981, #34d399); }
+
+        .card-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.25rem;
+        }
+
+        .card-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+        }
+
+        .badge-fail { background: rgba(244, 63, 94, 0.2); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); }
+        .badge-pass { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+        .score-display {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .score-big {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .score-big-v1 { color: #f43f5e; }
+        .score-big-v2 { color: #10b981; }
+
+        .score-grade {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 1.25rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .feature-item strong {
+            color: var(--text-main);
+        }
+
+        .icon-cross { color: #f43f5e; font-weight: bold; }
+        .icon-check { color: #10b981; font-weight: bold; }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.75rem 1.25rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            margin-top: 1rem;
+        }
+
+        .btn-outline {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--text-muted);
+        }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #ffffff;
+            box-shadow: 0 4px 16px var(--accent-glow);
+        }
+
+        .btn-gradient:hover {
+            opacity: 0.95;
+            box-shadow: 0 6px 24px rgba(99, 102, 241, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* Comparison Table */
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 1.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.85);
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+            color: var(--text-main);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .pill-delta {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+
+        /* Form Inputs */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 0.4rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus, .form-select:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        .preset-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-preset {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-preset:hover {
+            color: var(--text-main);
+            border-color: var(--accent-primary);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: none;
+            margin: 2rem auto;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(99, 102, 241, 0.2);
+            border-top: 4px solid var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .code-snippet {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            color: #cbd5e1;
+            margin-top: 1rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="logo-group">
+            <div class="logo-icon">&#x26A1;</div>
+            <div>
+                <div class="logo-title">AI Visibility & GEO Analyzer</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim);">Executive Closed-Loop Optimization Engine</div>
+            </div>
+        </div>
+        <div class="nav-links">
+            <span class="status-badge" id="gemini-status">
+                <span class="status-dot"></span> Gemini Search Grounding
+            </span>
+            <span class="status-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc; border-color: rgba(168, 85, 247, 0.3);">
+                <span class="status-dot" style="background-color: #c084fc; box-shadow: 0 0 8px #c084fc;"></span> Groq gpt-oss-120b
+            </span>
+            <a href="/docs" target="_blank" class="btn-link">&#x1F4D6; Swagger API Docs</a>
+        </div>
+    </header>
+
+    <!-- Hero Title -->
+    <section class="hero">
+        <h1>Generative Engine Optimization <span>(GEO)</span> Analyzer</h1>
+        <p>Measure, optimize, and rank your content for AI Answer Engines: ChatGPT, Perplexity, Google AI Overviews, and Claude.</p>
+    </section>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('tab-experiment')">&#x1F52C; Controlled Experiment (V1 vs V2)</button>
+            <button class="tab-btn" onclick="switchTab('tab-crawler')">&#x1F50D; Live On-Page GEO Crawler</button>
+            <button class="tab-btn" onclick="switchTab('tab-cluster')">&#x1F9E0; AI Query Cluster & Share of Voice</button>
+        </div>
+
+        <!-- TAB 1: CONTROLLED EXPERIMENT -->
+        <div id="tab-experiment" class="tab-content active">
+            <div class="grid-2">
+                <!-- Card V1 Baseline -->
+                <div class="card experiment-card card-v1">
+                    <div>
+                        <div class="card-header-flex">
+                            <div>
+                                <h3 style="font-size: 1.25rem; font-weight: 700;">V1 Baseline Website</h3>
+                                <div style="font-size: 0.85rem; color: var(--text-dim);">sample_site/v1_baseline/index.html</div>
+                            </div>
+                            <span class="card-badge badge-fail">Grade F</span>
+                        </div>
+
+                        <div class="score-display">
+                            <span class="score-big score-big-v1">3.8</span>
+                            <span class="score-grade">/ 100</span>
+                        </div>
+
+                        <ul class="feature-list">
+                            <li class="feature-item"><span class="icon-cross">&#x2716;</span> <span>robots.txt: <strong>Blocks GPTBot & Perplexity</strong></span></li>
+                            <li class="feature-item"><span class="icon-cross">&#x2716;</span> <span>JSON-LD Schema: <strong>0 Schemas Found</strong></span></li>
+                            <li class="feature-item"><span class="icon-cross">&#x2716;</span> <span>Direct Answers: <strong>0 Question Snippets</strong></span></li>
+                            <li class="feature-item"><span class="icon-cross">&#x2716;</span> <span>Empirical Data: <strong>0 Statistics / Adjective Fluff</strong></span></li>
+                            <li class="feature-item"><span class="icon-cross">&#x2716;</span> <span>E-E-A-T Trust: <strong>No Author Credentials / No Dates</strong></span></li>
+                        </ul>
+                    </div>
+
+                    <a href="/sample/v1/" target="_blank" class="btn-action btn-outline">&#x1F517; Open V1 Baseline Website</a>
+                </div>
+
+                <!-- Card V2 Optimized -->
+                <div class="card experiment-card card-v2">
+                    <div>
+                        <div class="card-header-flex">
+                            <div>
+                                <h3 style="font-size: 1.25rem; font-weight: 700;">V2 GEO-Optimized Website</h3>
+                                <div style="font-size: 0.85rem; color: var(--text-dim);">sample_site/v2_optimized/index.html</div>
+                            </div>
+                            <span class="card-badge badge-pass">Grade A</span>
+                        </div>
+
+                        <div class="score-display">
+                            <span class="score-big score-big-v2">100.0</span>
+                            <span class="score-grade">/ 100</span>
+                            <span class="pill-delta" style="margin-left: 0.5rem;">+96.2 PTS</span>
+                        </div>
+
+                        <ul class="feature-list">
+                            <li class="feature-item"><span class="icon-check">&#x2714;</span> <span>robots.txt: <strong>Allows all AI Crawlers</strong></span></li>
+                            <li class="feature-item"><span class="icon-check">&#x2714;</span> <span>JSON-LD: <strong>SoftwareApp, FAQPage, Org Schemas</strong></span></li>
+                            <li class="feature-item"><span class="icon-check">&#x2714;</span> <span>Direct Answers: <strong>5 Question Headings + 40-word Answers</strong></span></li>
+                            <li class="feature-item"><span class="icon-check">&#x2714;</span> <span>Empirical Data: <strong>8 Verified Benchmarks (240ms, 38%, $8)</strong></span></li>
+                            <li class="feature-item"><span class="icon-check">&#x2714;</span> <span>E-E-A-T Trust: <strong>Dr. Sarah Lin (Ex-Atlassian), SOC2, 2026</strong></span></li>
+                        </ul>
+                    </div>
+
+                    <a href="/sample/v2/" target="_blank" class="btn-action btn-gradient">&#x1F680; Open V2 Optimized Website</a>
+                </div>
+            </div>
+
+            <!-- Side-by-Side Detailed Delta Matrix -->
+            <div class="card">
+                <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">&#x1F4CA; Side-by-Side GEO Factor Breakdown (Before vs After)</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>GEO Evaluation Dimension</th>
+                                <th>V1 Baseline</th>
+                                <th>V2 Optimized</th>
+                                <th>Score Delta</th>
+                                <th>Why LLMs Need This</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>AI Crawler Access (robots.txt)</strong></td>
+                                <td><span style="color: #f43f5e;">0.0 (FAILED)</span></td>
+                                <td><span style="color: #10b981;">100.0 (PASSED)</span></td>
+                                <td><span class="pill-delta">+100.0</span></td>
+                                <td style="color: var(--text-muted);">Unblocks GPTBot and PerplexityBot so content can be indexed.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Structured Schema Markup (JSON-LD)</strong></td>
+                                <td><span style="color: #f43f5e;">0.0 (FAILED)</span></td>
+                                <td><span style="color: #10b981;">100.0 (PASSED)</span></td>
+                                <td><span class="pill-delta">+100.0</span></td>
+                                <td style="color: var(--text-muted);">Feeds Knowledge Graph entities directly without NLP ambiguity.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Direct Answer Density (40-50 words)</strong></td>
+                                <td><span style="color: #f43f5e;">15.0 (FAILED)</span></td>
+                                <td><span style="color: #10b981;">100.0 (PASSED)</span></td>
+                                <td><span class="pill-delta">+85.0</span></td>
+                                <td style="color: var(--text-muted);">Matches RAG embedding token chunks extracted for AI Overviews.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Statistical & Benchmark Density</strong></td>
+                                <td><span style="color: #f43f5e;">10.0 (FAILED)</span></td>
+                                <td><span style="color: #10b981;">100.0 (PASSED)</span></td>
+                                <td><span class="pill-delta">+90.0</span></td>
+                                <td style="color: var(--text-muted);">LLMs prefer citing empirical numbers (38%, 240ms) over vague marketing prose.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>E-E-A-T Credibility & Author Signals</strong></td>
+                                <td><span style="color: #f43f5e;">0.0 (FAILED)</span></td>
+                                <td><span style="color: #10b981;">100.0 (PASSED)</span></td>
+                                <td><span class="pill-delta">+100.0</span></td>
+                                <td style="color: var(--text-muted);">Rerankers prioritize verified authors and SOC2/ISO audit compliance.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Freshness & 2026 Temporal Anchoring</strong></td>
+                                <td><span style="color: #f43f5e;">0.0 (FAILED)</span></td>
+                                <td><span style="color: #10b981;">100.0 (PASSED)</span></td>
+                                <td><span class="pill-delta">+100.0</span></td>
+                                <td style="color: var(--text-muted);">Satisfies temporal recency filters for year-qualified search prompts.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: LIVE ON-PAGE CRAWLER -->
+        <div id="tab-crawler" class="tab-content">
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">Audit Any Webpage for GEO Factors</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+                    Enter a local HTML file path or live URL (`https://...`) to analyze its robots.txt, JSON-LD schemas, direct answer chunks, and statistical density.
+                </p>
+
+                <div class="form-group">
+                    <label class="form-label">Target URL or File Path</label>
+                    <input type="text" id="crawler-input" class="form-input" value="sample_site/v2_optimized/index.html" placeholder="e.g. sample_site/v2_optimized/index.html or https://pulsetask.io">
+                    <div class="form-group">
+                        <label class="form-label">Competitor URLs to Benchmark Against (Optional, comma-separated)</label>
+                        <input type="text" id="crawler-competitors" class="form-input" value="https://atlassian.com/software/jira, https://clickup.com" placeholder="e.g. https://atlassian.com, https://clickup.com">
+                    </div>
+
+                    <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                        <input type="checkbox" id="crawler-compare-toggle" checked style="accent-color: var(--accent-primary); width: 16px; height: 16px;">
+                        <label for="crawler-compare-toggle">Benchmark and rank against competitors live</label>
+                    </div>
+
+                    <div class="preset-buttons" style="margin-bottom: 1.25rem;">
+                        <button class="btn-preset" onclick="setCrawlerPreset('deployable_test_site/index.html')">&#x1F534; Test Unoptimized Baseline</button>
+                        <button class="btn-preset" onclick="setCrawlerPreset('sample_site/v2_optimized/index.html')">&#x1F7E2; Test GEO-Optimized</button>
+                    </div>
+
+                    <button class="btn-action btn-gradient" onclick="runLiveCrawler()">&#x26A1; Audit & Benchmark Against Competitors</button>
+                    <div id="crawler-spinner" class="spinner"></div>
+                </div>
+
+                <!-- Crawler Results Area -->
+                <div id="crawler-result" style="display: none;"></div>
+            </div>
+
+            <!-- TAB 3: AI QUERY CLUSTER -->
+            <div id="tab-cluster" class="tab-content">
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">Dynamic Query Cluster & Share of Voice Audit</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+                        Expands your seed prompt into 5 human buyer variations (Casual, Specific, Budget, Alternatives, Comparison) and queries the LLM in parallel.
+                    </p>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">Natural Seed Search Query</label>
+                            <input type="text" id="cluster-query" class="form-input" value="best agile sprint management software in 2026">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Target Brand Website URL</label>
+                            <input type="text" id="cluster-url" class="form-input" value="https://pulsetask.io">
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label class="form-label">LLM Provider</label>
+                            <select id="cluster-provider" class="form-select">
+                                <option value="Gemini" selected>Google Gemini (Live Search Grounded)</option>
+                                <option value="Groq">Groq (openai/gpt-oss-120b)</option>
+                                <option value="Mock">Deterministic Mock (Instant Local)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Competitor Auto-Discovery</label>
+                            <select id="cluster-autodiscover" class="form-select">
+                                <option value="true" selected>Auto-Discover Competitors Automatically</option>
+                                <option value="false">Manual Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn-action btn-gradient" onclick="runClusterAudit()">&#x1F9E0; Run AI Visibility Cluster Audit</button>
+                    <div id="cluster-spinner" class="spinner"></div>
+                </div>
+
+                <!-- Cluster Results Area -->
+                <div id="cluster-result" style="display: none;"></div>
+            </div>
+        </div>
+
+        <script>
+            function switchTab(tabId) {
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+                document.getElementById(tabId).classList.add('active');
+                event.target.classList.add('active');
+            }
+
+            function setCrawlerPreset(path) {
+                document.getElementById('crawler-input').value = path;
+            }
+
+            async function runLiveCrawler() {
+                const input = document.getElementById('crawler-input').value.trim();
+                const compInput = document.getElementById('crawler-competitors').value.trim();
+                const compareMode = document.getElementById('crawler-compare-toggle').checked;
+                const spinner = document.getElementById('crawler-spinner');
+                const resultDiv = document.getElementById('crawler-result');
+
+                if (!input) return alert('Please enter a target file path or URL');
+
+                spinner.style.display = 'block';
+                resultDiv.style.display = 'none';
+
+                const comps = compInput ? compInput.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+                try {
+                    const endpoint = compareMode ? '/api/crawler/compare' : '/api/crawler/audit-page';
+                    const payload = compareMode 
+                        ? { url_or_path: input, competitors: comps }
+                        : { url_or_path: input };
+
+                    const resp = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!resp.ok) {
+                        const err = await resp.json();
+                        throw new Error(err.detail || 'Audit failed');
+                    }
+
+                    const data = await resp.json();
+                    renderCrawlerResult(data, compareMode);
+                } catch (err) {
+                    resultDiv.innerHTML = `<div class="card" style="border-color: #f43f5e;"><strong style="color: #f43f5e;">Error:</strong> ${err.message}</div>`;
+                    resultDiv.style.display = 'block';
+                } finally {
+                    spinner.style.display = 'none';
+                }
+            }
+
+            function renderCrawlerResult(data, isComparative) {
+                const resultDiv = document.getElementById('crawler-result');
+                const target = isComparative ? data.target_audit : data;
+                const isGood = target.overall_score >= 80;
+                const badgeClass = isGood ? 'badge-pass' : 'badge-fail';
+                const scoreColor = isGood ? '#10b981' : '#f43f5e';
+
+                // 1. Leaderboard Ranking Section (if comparative)
+                let leaderboardHtml = '';
+                if (isComparative) {
+                    const isWinner = data.rank_position === 1;
+                    const rankColor = isWinner ? '#10b981' : '#f59e0b';
+                    const rankBadge = isWinner ? '🏆 Rank #1 (Market Leader)' : `⚠️ Rank #${data.rank_position} of ${data.total_sites} (Deficit)`;
+
+                    const allSites = [data.target_audit, ...data.competitors];
+                    allSites.sort((a, b) => b.overall_score - a.overall_score);
+
+                    let compRows = '';
+                    allSites.forEach((site, i) => {
+                        const isTarget = site.url_or_path === target.url_or_path;
+                        const rowHighlight = isTarget ? 'background: rgba(99, 102, 241, 0.1);' : '';
+                        compRows += `
+                            <tr style="${rowHighlight}">
+                                <td><strong>#${i + 1}</strong></td>
+                                <td>
+                                    <strong>${site.brand_name || 'Brand'}</strong>
+                                    ${isTarget ? '<span style="color: #818cf8; font-weight: bold; margin-left: 0.35rem;">(Your Site)</span>' : ''}
+                                </td>
+                                <td style="font-weight: bold; color: ${site.overall_score >= 80 ? '#10b981' : (site.overall_score >= 60 ? '#f59e0b' : '#f43f5e')};">
+                                    ${site.overall_score.toFixed(1)} / 100
+                                </td>
+                                <td>Grade ${site.grade}</td>
+                                <td>${site.factors.ai_crawler_access?.status === 'PASSED' ? '<span style="color: #10b981;">&#x2714; Allowed</span>' : '<span style="color: #f43f5e;">&#x2716; Blocked</span>'}</td>
+                                <td>${site.factors.structured_data?.status === 'PASSED' ? '<span style="color: #10b981;">&#x2714; Full</span>' : '<span style="color: #f43f5e;">&#x2716; Missing</span>'}</td>
+                                <td>${site.factors.statistical_density?.status === 'PASSED' ? '<span style="color: #10b981;">&#x2714; Rich</span>' : '<span style="color: #f43f5e;">&#x2716; Low</span>'}</td>
+                            </tr>
+                        `;
+                    });
+
+                    leaderboardHtml = `
+                        <div class="card" style="margin-bottom: 1.5rem; border-color: ${rankColor};">
+                            <div class="card-header-flex">
+                                <div>
+                                    <h3 style="font-size: 1.25rem; font-weight: 700;">Competitive Benchmark Leaderboard</h3>
+                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">
+                                        ${data.competitive_gap_summary}
+                                    </p>
+                                </div>
+                                <span class="card-badge" style="background: ${isWinner ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}; color: ${rankColor};">
+                                    ${rankBadge}
+                                </span>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Brand / Domain</th>
+                                            <th>GEO Score</th>
+                                            <th>Grade</th>
+                                            <th>AI Bots</th>
+                                            <th>JSON-LD</th>
+                                            <th>Stats</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>${compRows}</tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 2. Factor Breakdown for Target Site
+                let factorsHtml = '';
+                for (const key in target.factors) {
+                    const f = target.factors[key];
+                    const fPass = f.status === 'PASSED';
+                    const fIcon = fPass ? '&#x2714;' : (f.status === 'WARNING' ? '&#x26A0;' : '&#x2716;');
+                    const fColor = fPass ? '#10b981' : (f.status === 'WARNING' ? '#f59e0b' : '#f43f5e');
+
+                    factorsHtml += `
+                        <tr>
+                            <td style="vertical-align: top; width: 30%;"><strong>${f.name}</strong></td>
+                            <td style="vertical-align: top; width: 18%; color: ${fColor}; font-weight: bold;">${f.score.toFixed(1)} / 100 (${f.status})</td>
+                            <td style="vertical-align: top; color: var(--text-muted); font-size: 0.85rem;">
+                                ${f.summary}
+                                ${f.evidence && f.evidence.length ? `<div style="color: var(--text-dim); margin-top: 0.25rem;"><em>Evidence: ${f.evidence.join(' | ')}</em></div>` : ''}
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                // 3. Bullet-Point Recommendations (Descriptions Only - No Raw Code)
+                const bullets = (isComparative && data.actionable_bullet_points && data.actionable_bullet_points.length > 0)
+                    ? data.actionable_bullet_points
+                    : (target.key_recommendations || []);
+
+                let recsHtml = '';
+                if (bullets.length > 0) {
+                    recsHtml = `
+                        <div class="card" style="margin-top: 1.5rem; border-color: rgba(245, 158, 11, 0.35);">
+                            <h4 style="color: #f59e0b; margin-bottom: 0.75rem; font-size: 1.05rem;">
+                                &#x1F4A1; Strategic GEO Optimization Roadmap (Action Items):
+                            </h4>
+                            <ul style="padding-left: 1.25rem; color: var(--text-main); font-size: 0.95rem; line-height: 1.7;">
+                                ${bullets.map(b => `<li style="margin-bottom: 0.5rem;">${b}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+
+                resultDiv.innerHTML = `
+                    ${leaderboardHtml}
+
+                    <div class="card">
+                        <div class="card-header-flex">
+                            <div>
+                                <h3 style="font-size: 1.25rem; font-weight: 700;">${target.brand_name || 'Target Page'} Audit Details</h3>
+                                <div style="font-size: 0.85rem; color: var(--text-dim);">${target.url_or_path}</div>
+                            </div>
+                            <span class="card-badge ${badgeClass}">Grade ${target.grade}</span>
+                        </div>
+
+                        <div class="score-display">
+                            <span class="score-big" style="color: ${scoreColor};">${target.overall_score.toFixed(1)}</span>
+                            <span class="score-grade">/ 100</span>
+                        </div>
+
+                        <div style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-muted); flex-wrap: wrap;">
+                            <div>Word Count: <strong>${target.stats_summary?.word_count || 0}</strong></div>
+                            <div>Direct Answers: <strong>${target.stats_summary?.direct_answers_count || 0}</strong></div>
+                            <div>Schemas Found: <strong>${(target.stats_summary?.schemas_detected || []).join(', ') || 'None'}</strong></div>
+                            <div>Statistics Found: <strong>${target.stats_summary?.statistics_detected_count || 0}</strong></div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Factor</th>
+                                        <th>Score</th>
+                                        <th>Analysis & Diagnostic Findings</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${factorsHtml}</tbody>
+                            </table>
+                        </div>
+
+                        ${recsHtml}
+                    </div>
+                `;
+                resultDiv.style.display = 'block';
+            }
+
+            resultDiv.innerHTML = `
+                <div class="card">
+                    <div class="card-header-flex">
+                        <div>
+                            <h3 style="font-size: 1.25rem; font-weight: 700;">${data.page_title || 'Webpage Audit'}</h3>
+                            <div style="font-size: 0.85rem; color: var(--text-dim);">${data.url_or_path}</div>
+                        </div>
+                        <span class="card-badge ${badgeClass}">Grade ${data.grade}</span>
+                    </div>
+
+                    <div class="score-display">
+                        <span class="score-big" style="color: ${scoreColor};">${data.overall_score.toFixed(1)}</span>
+                        <span class="score-grade">/ 100</span>
+                    </div>
+
+                    <div style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                        <div>Word Count: <strong>${data.stats_summary.word_count || 0}</strong></div>
+                        <div>Direct Answers: <strong>${data.stats_summary.direct_answers_count || 0}</strong></div>
+                        <div>Schemas Found: <strong>${(data.stats_summary.schemas_detected || []).join(', ') || 'None'}</strong></div>
+                        <div>Statistics Detected: <strong>${data.stats_summary.statistics_detected_count || 0}</strong></div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Factor</th>
+                                    <th>Score</th>
+                                    <th>Analysis & Evidence</th>
+                                </tr>
+                            </thead>
+                            <tbody>${factorsHtml}</tbody>
+                        </table>
+                    </div>
+
+                    ${recsHtml}
+                </div>
+            `;
+            resultDiv.style.display = 'block';
+        }
+
+        async function runClusterAudit() {
+            const query = document.getElementById('cluster-query').value.trim();
+            const brand_url = document.getElementById('cluster-url').value.trim();
+            const provider = document.getElementById('cluster-provider').value;
+            const auto_discover = document.getElementById('cluster-autodiscover').value === 'true';
+            const spinner = document.getElementById('cluster-spinner');
+            const resultDiv = document.getElementById('cluster-result');
+
+            if (!query || !brand_url) return alert('Please enter both seed query and brand URL');
+
+            spinner.style.display = 'block';
+            resultDiv.style.display = 'none';
+
+            try {
+                const resp = await fetch('/api/audit/cluster', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        query: query,
+                        brand_url: brand_url,
+                        provider: provider,
+                        auto_discover_competitors: auto_discover,
+                        count: 4
+                    })
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.detail || 'Audit failed');
+                }
+
+                const data = await resp.json();
+                renderClusterResult(data);
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="card" style="border-color: #f43f5e;"><strong style="color: #f43f5e;">Error:</strong> ${err.message}</div>`;
+                resultDiv.style.display = 'block';
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        function renderClusterResult(data) {
+            const resultDiv = document.getElementById('cluster-result');
+            const comp = data.comparative_report;
+            const summary = data.cluster_summary;
+
+            let compRows = '';
+            const allBrands = [comp.target_brand, ...(comp.competitors || [])];
+            for (const b of allBrands) {
+                compRows += `
+                    <tr>
+                        <td><strong>${b.brand_name}</strong> ${b.is_target ? '<span style="color: #818cf8;">(Target)</span>' : ''}</td>
+                        <td>${b.mention_count} / ${comp.total_queries_tested} (${b.mention_rate}%)</td>
+                        <td>${b.citation_count} / ${comp.total_queries_tested} (${b.citation_rate}%)</td>
+                        <td>${b.average_rank ? '#' + b.average_rank : 'N/A'}</td>
+                        <td style="font-weight: 700; color: #10b981;">${b.composite_visibility_score}</td>
+                        <td style="font-weight: 700; color: #818cf8;">${b.share_of_voice}%</td>
+                    </tr>
+                `;
+            }
+
+            let gapsHtml = '';
+            if (comp.gap_analysis && comp.gap_analysis.length > 0) {
+                gapsHtml = `
+                    <div class="card" style="margin-top: 1.5rem; border-color: rgba(99, 102, 241, 0.3);">
+                        <h4 style="color: #818cf8; margin-bottom: 0.75rem;">&#x1F4CA; Strategic AI Gap Analysis:</h4>
+                        <ul style="padding-left: 1.25rem; font-size: 0.9rem;">
+                            ${comp.gap_analysis.map(g => `<li style="margin-bottom: 0.35rem;">${g}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            resultDiv.innerHTML = `
+                <div class="card">
+                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">Competitive AI Benchmark Results</h3>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+                        Seed: "${summary.seed_query}" | Tested across ${comp.total_queries_tested} human intent queries.
+                    </p>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Brand</th>
+                                    <th>Mentions</th>
+                                    <th>Citations</th>
+                                    <th>Avg Rank</th>
+                                    <th>Score / 100</th>
+                                    <th>Share of Voice</th>
+                                </tr>
+                            </thead>
+                            <tbody>${compRows}</tbody>
+                        </table>
+                    </div>
+
+                    ${gapsHtml}
+                </div>
+            `;
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

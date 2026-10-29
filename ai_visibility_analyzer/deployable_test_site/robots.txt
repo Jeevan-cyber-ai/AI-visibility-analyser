@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# GEO Flaw: Blocking AI Crawlers
+User-agent: GPTBot
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
