@@ -48,6 +48,7 @@ class CrawlerService:
             "brand": "Jira",
             "url": "https://atlassian.com/software/jira",
             "score": 85.0,
+            "seo_score": 88.0,
             "grade": "B",
             "factors": {
                 "ai_crawler_access": 100.0,
@@ -62,6 +63,7 @@ class CrawlerService:
             "brand": "ClickUp",
             "url": "https://clickup.com",
             "score": 78.5,
+            "seo_score": 84.0,
             "grade": "C",
             "factors": {
                 "ai_crawler_access": 100.0,
@@ -76,6 +78,7 @@ class CrawlerService:
             "brand": "Linear",
             "url": "https://linear.app",
             "score": 88.0,
+            "seo_score": 92.0,
             "grade": "B",
             "factors": {
                 "ai_crawler_access": 100.0,
@@ -129,6 +132,16 @@ class CrawlerService:
             "content_freshness": f_freshness,
         }
 
+        # Evaluate Classic SEO Score (on-page search health)
+        seo_score, seo_details, seo_recs = cls._evaluate_classic_seo(
+            soup=soup,
+            page_title=page_title,
+            meta_description=meta_description,
+            plain_text=plain_text,
+            word_count=word_count,
+            brand_name=brand_name,
+        )
+
         overall_score = sum(f.score * f.weight for f in factors.values())
         grade = PageAuditResult.calculate_grade(overall_score)
 
@@ -137,6 +150,8 @@ class CrawlerService:
         for f in factors.values():
             if f.status in ("FAILED", "WARNING"):
                 key_recommendations.extend(f.recommendations)
+        if seo_score < 75:
+            key_recommendations.extend(seo_recs[:2])
 
         return PageAuditResult(
             url_or_path=resolved_target,
@@ -144,14 +159,17 @@ class CrawlerService:
             page_title=page_title,
             meta_description=meta_description,
             overall_score=overall_score,
+            seo_score=seo_score,
             grade=grade,
             factors=factors,
+            seo_details=seo_details,
             stats_summary={
                 "word_count": word_count,
                 "schemas_detected": schemas_found,
                 "direct_answers_count": len(direct_answers),
                 "statistics_detected_count": len(stats_found),
                 "has_robots_txt": robots_content is not None,
+                "seo_score": seo_score,
             },
             key_recommendations=key_recommendations,
         )
@@ -199,6 +217,7 @@ class CrawlerService:
                     brand_name=prof["brand"],
                     page_title=f"{prof['brand']} Official Platform",
                     overall_score=prof["score"],
+                    seo_score=prof.get("seo_score", 85.0),
                     grade=prof["grade"],
                     factors=factors_dict,
                     stats_summary={"word_count": 850, "schemas_detected": ["SoftwareApplication"], "direct_answers_count": 3, "statistics_detected_count": 5},
@@ -231,6 +250,12 @@ class CrawlerService:
             if factor.status in ("FAILED", "WARNING"):
                 action_bullets.extend(factor.recommendations)
 
+        # Baseline estimated AI Visibility and SOV (prior to live query execution)
+        ai_vis = round(target_audit.overall_score * 0.75 + target_audit.seo_score * 0.25, 1)
+        all_scores = [target_audit.overall_score] + [c.overall_score for c in competitor_audits]
+        denom = sum(all_scores) if sum(all_scores) > 0 else 1.0
+        sov = round((target_audit.overall_score / denom) * 100.0, 1)
+
         return ComparativePageAudit(
             target_brand=target_brand,
             target_audit=target_audit,
@@ -240,6 +265,8 @@ class CrawlerService:
             winner_brand=winner.brand_name,
             competitive_gap_summary=gap_summary,
             actionable_bullet_points=action_bullets,
+            ai_visibility_score=ai_vis,
+            share_of_voice=sov,
         )
 
     # -------------------------------------------------------------------------
@@ -281,7 +308,14 @@ class CrawlerService:
 
         p = Path(target)
         if not p.is_absolute():
-            p = p.resolve()
+            # Check relative to backend directory or current working directory
+            backend_base = Path(__file__).resolve().parent.parent
+            if (backend_base / target).exists():
+                p = backend_base / target
+            elif (Path.cwd() / "ai_visibility_analyzer" / "backend" / target).exists():
+                p = Path.cwd() / "ai_visibility_analyzer" / "backend" / target
+            else:
+                p = p.resolve()
 
         if not p.exists():
             raise FileNotFoundError(f"Target file does not exist: {p}")
@@ -633,3 +667,146 @@ class CrawlerService:
             evidence=evidence if evidence else ["No semantic <time> tags or recent year anchors detected"],
             recommendations=recs,
         )
+
+    # -------------------------------------------------------------------------
+    # Pillar: Classic On-Page Search Health (SEO Score)
+    # -------------------------------------------------------------------------
+    @classmethod
+    def _evaluate_classic_seo(
+        cls, 
+        soup: BeautifulSoup, 
+        page_title: Optional[str], 
+        meta_description: Optional[str], 
+        plain_text: str, 
+        word_count: int,
+        brand_name: str = "your brand"
+    ) -> Tuple[float, Dict[str, Any], List[str]]:
+        """
+        Evaluates classic on-page SEO health across 9 foundational signals:
+        1. Title Tag presence & length (30-65 chars) -> 15 pts
+        2. Meta Description presence & length (60-160 chars) -> 15 pts
+        3. Single H1 Tag presence -> 15 pts
+        4. Subheading Structure (H2 / H3 tags) -> 10 pts
+        5. Image Alt Attributes -> 10 pts
+        6. Mobile Viewport Meta -> 10 pts
+        7. Canonical Link Tag -> 10 pts
+        8. Open Graph Social Meta -> 10 pts
+        9. Content Text Depth (>250 words) -> 5 pts
+        Total = 100 points
+        """
+        score = 0.0
+        breakdown: Dict[str, Any] = {}
+        recommendations: List[str] = []
+
+        # 1. Title Tag (15 pts)
+        if page_title:
+            t_len = len(page_title)
+            if 30 <= t_len <= 70:
+                score += 15.0
+                breakdown["title_tag"] = {"score": 15.0, "status": "PASSED", "detail": f"Optimal length ({t_len} chars): '{page_title[:45]}...'"}
+            else:
+                score += 8.0
+                breakdown["title_tag"] = {"score": 8.0, "status": "WARNING", "detail": f"Title present but length ({t_len} chars) is outside optimal 30-70 range"}
+                recommendations.append(f"Optimize {brand_name}'s title tag length to 30-70 characters (currently {t_len} chars).")
+        else:
+            breakdown["title_tag"] = {"score": 0.0, "status": "FAILED", "detail": "Missing <title> tag"}
+            recommendations.append(f"Add a descriptive <title> tag for {brand_name}.")
+
+        # 2. Meta Description (15 pts)
+        if meta_description:
+            m_len = len(meta_description)
+            if 50 <= m_len <= 165:
+                score += 15.0
+                breakdown["meta_description"] = {"score": 15.0, "status": "PASSED", "detail": f"Optimal length ({m_len} chars)"}
+            else:
+                score += 8.0
+                breakdown["meta_description"] = {"score": 8.0, "status": "WARNING", "detail": f"Meta description present ({m_len} chars) but outside optimal 50-165 range"}
+                recommendations.append(f"Adjust {brand_name}'s meta description to 50-165 characters (currently {m_len} chars).")
+        else:
+            breakdown["meta_description"] = {"score": 0.0, "status": "FAILED", "detail": "Missing meta description tag"}
+            recommendations.append(f"Add a <meta name=\"description\"> summary for {brand_name} to capture search snippet CTR.")
+
+        # 3. Single H1 Tag (15 pts)
+        h1_tags = soup.find_all("h1")
+        if len(h1_tags) == 1:
+            score += 15.0
+            breakdown["h1_tag"] = {"score": 15.0, "status": "PASSED", "detail": f"Single H1 tag: '{h1_tags[0].get_text(strip=True)[:45]}'"}
+        elif len(h1_tags) > 1:
+            score += 8.0
+            breakdown["h1_tag"] = {"score": 8.0, "status": "WARNING", "detail": f"Found {len(h1_tags)} H1 tags (recommended: exactly 1)"}
+            recommendations.append(f"Consolidate multiple H1 headings on {brand_name} into a single primary H1 tag.")
+        else:
+            breakdown["h1_tag"] = {"score": 0.0, "status": "FAILED", "detail": "No <h1> heading tag found"}
+            recommendations.append(f"Add a primary <h1> tag containing target keywords for {brand_name}.")
+
+        # 4. Heading Structure (10 pts)
+        h2_tags = soup.find_all("h2")
+        h3_tags = soup.find_all("h3")
+        if len(h2_tags) >= 2:
+            score += 10.0
+            breakdown["headings_structure"] = {"score": 10.0, "status": "PASSED", "detail": f"Found {len(h2_tags)} H2 and {len(h3_tags)} H3 headings"}
+        elif len(h2_tags) == 1:
+            score += 5.0
+            breakdown["headings_structure"] = {"score": 5.0, "status": "WARNING", "detail": "Only 1 H2 heading found"}
+            recommendations.append(f"Structure {brand_name}'s content with multiple <h2> sections.")
+        else:
+            breakdown["headings_structure"] = {"score": 0.0, "status": "FAILED", "detail": "No H2 subheadings found"}
+            recommendations.append(f"Add semantic <h2> subheadings to divide {brand_name}'s page into clear topic sections.")
+
+        # 5. Image Alt Attributes (10 pts)
+        images = soup.find_all("img")
+        if not images:
+            score += 10.0
+            breakdown["image_alts"] = {"score": 10.0, "status": "PASSED", "detail": "No image assets requiring alt tags"}
+        else:
+            images_with_alt = [img for img in images if img.get("alt") and img.get("alt").strip()]
+            ratio = len(images_with_alt) / len(images)
+            img_score = round(ratio * 10.0, 1)
+            score += img_score
+            breakdown["image_alts"] = {"score": img_score, "status": "PASSED" if ratio >= 0.8 else "WARNING", "detail": f"{len(images_with_alt)} of {len(images)} images have alt tags"}
+            if ratio < 0.8:
+                recommendations.append(f"Add descriptive alt text to all {len(images) - len(images_with_alt)} unlabelled images on {brand_name}.")
+
+        # 6. Mobile Viewport Meta (10 pts)
+        viewport_tag = soup.find("meta", attrs={"name": re.compile(r"viewport", re.I)})
+        if viewport_tag and "width=device-width" in viewport_tag.get("content", "").lower():
+            score += 10.0
+            breakdown["viewport"] = {"score": 10.0, "status": "PASSED", "detail": "Mobile viewport configured"}
+        else:
+            breakdown["viewport"] = {"score": 0.0, "status": "FAILED", "detail": "Missing mobile viewport meta tag"}
+            recommendations.append("Add <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"> for mobile responsiveness.")
+
+        # 7. Canonical Tag (10 pts)
+        canonical_tag = soup.find("link", attrs={"rel": re.compile(r"canonical", re.I)})
+        if canonical_tag and canonical_tag.get("href"):
+            score += 10.0
+            breakdown["canonical"] = {"score": 10.0, "status": "PASSED", "detail": f"Canonical URL specified: {canonical_tag.get('href')[:50]}"}
+        else:
+            breakdown["canonical"] = {"score": 0.0, "status": "WARNING", "detail": "No canonical <link> tag found"}
+            recommendations.append(f"Add a canonical link tag (<link rel=\"canonical\" href=\"...\">) to prevent duplicate content issues.")
+
+        # 8. Open Graph Social Meta (10 pts)
+        og_title = soup.find("meta", property="og:title")
+        og_desc = soup.find("meta", property="og:description")
+        if og_title and og_desc:
+            score += 10.0
+            breakdown["open_graph"] = {"score": 10.0, "status": "PASSED", "detail": "Open Graph social tags complete"}
+        elif og_title or og_desc:
+            score += 5.0
+            breakdown["open_graph"] = {"score": 5.0, "status": "WARNING", "detail": "Partial Open Graph tags"}
+        else:
+            breakdown["open_graph"] = {"score": 0.0, "status": "WARNING", "detail": "No Open Graph (og:title, og:description) tags"}
+            recommendations.append(f"Add Open Graph social preview meta tags (og:title, og:description, og:image) for {brand_name}.")
+
+        # 9. Content Depth (5 pts)
+        if word_count >= 250:
+            score += 5.0
+            breakdown["content_depth"] = {"score": 5.0, "status": "PASSED", "detail": f"Substantial content ({word_count} words)"}
+        elif word_count >= 100:
+            score += 2.5
+            breakdown["content_depth"] = {"score": 2.5, "status": "WARNING", "detail": f"Moderate content ({word_count} words)"}
+        else:
+            breakdown["content_depth"] = {"score": 0.0, "status": "FAILED", "detail": f"Thin content ({word_count} words)"}
+            recommendations.append(f"Expand body copy on {brand_name} beyond {word_count} words to provide comprehensive topical coverage.")
+
+        return round(min(100.0, score), 1), breakdown, recommendations

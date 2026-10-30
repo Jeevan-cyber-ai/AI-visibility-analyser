@@ -30,8 +30,11 @@ export interface PageAuditResult {
   page_title?: string;
   meta_description?: string;
   overall_score: number;
+  geo_score?: number;
+  seo_score?: number;
   grade: string;
   factors: Record<string, FactorDetail>;
+  seo_details?: Record<string, any>;
   stats_summary: StatsSummary;
   key_recommendations: string[];
 }
@@ -53,6 +56,10 @@ export interface ComparativePageAudit {
   winner_brand: string;
   competitive_gap_summary: string;
   actionable_bullet_points: string[];
+  ai_visibility_score?: number;
+  share_of_voice?: number;
+  geo_score?: number;
+  seo_score?: number;
   // Integrated query cluster fields
   query?: string;
   cluster_summary?: ClusterSummary;

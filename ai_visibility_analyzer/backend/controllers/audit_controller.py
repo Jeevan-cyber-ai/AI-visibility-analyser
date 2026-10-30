@@ -124,6 +124,12 @@ def compare_page_endpoint(req: ComparePageRequest):
             res_dict["comparative_report"] = comparative_report.to_dict()
             res_dict["brand_query_scores"] = brand_query_scores
 
+            # Top-level executive scores
+            res_dict["ai_visibility_score"] = round(tb.composite_visibility_score, 1)
+            res_dict["share_of_voice"] = round(tb.share_of_voice, 1)
+            res_dict["geo_score"] = round(comp_audit.target_audit.overall_score, 1)
+            res_dict["seo_score"] = round(comp_audit.target_audit.seo_score, 1)
+
             # Enrich action bullets with AI search query findings
             if tb.mention_rate < 50:
                 res_dict["actionable_bullet_points"].append(
@@ -133,6 +139,11 @@ def compare_page_endpoint(req: ComparePageRequest):
                 res_dict["actionable_bullet_points"].append(
                     f"Citation Authority Gap: AI search models did not cite {comp_audit.target_brand} as a linked source. Ensure robots.txt grants access to GPTBot/PerplexityBot and embed verified empirical benchmarks."
                 )
+        else:
+            res_dict["ai_visibility_score"] = comp_audit.ai_visibility_score
+            res_dict["share_of_voice"] = comp_audit.share_of_voice
+            res_dict["geo_score"] = round(comp_audit.target_audit.overall_score, 1)
+            res_dict["seo_score"] = round(comp_audit.target_audit.seo_score, 1)
 
         return res_dict
     except Exception as e:

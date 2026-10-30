@@ -76,7 +76,8 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({
             <tr>
               <th style={{ width: '75px' }}>Rank</th>
               <th>Brand & Domain</th>
-              <th style={{ width: '120px' }}>GEO Score</th>
+              <th style={{ width: '110px' }}>GEO Score</th>
+              <th style={{ width: '110px' }}>SEO Score</th>
               <th style={{ width: '85px' }}>Grade</th>
               {hasQueryAudit ? (
                 <>
@@ -136,6 +137,14 @@ export const LeaderboardTable: React.FC<LeaderboardTableProps> = ({
                   <td>
                     <div className="score-cell">
                       <span className="score-text mono">{site.overall_score.toFixed(1)}</span>
+                      <span className="score-max">/100</span>
+                    </div>
+                  </td>
+
+                  {/* Classic SEO Score */}
+                  <td>
+                    <div className="score-cell">
+                      <span className="score-text mono">{(site.seo_score ?? 75).toFixed(0)}</span>
                       <span className="score-max">/100</span>
                     </div>
                   </td>

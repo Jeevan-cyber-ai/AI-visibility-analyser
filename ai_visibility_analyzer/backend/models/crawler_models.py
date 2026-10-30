@@ -37,8 +37,10 @@ class PageAuditResult(BaseModel):
     page_title: Optional[str] = None
     meta_description: Optional[str] = None
     overall_score: float = Field(..., ge=0.0, le=100.0)
+    seo_score: float = Field(default=70.0, ge=0.0, le=100.0)
     grade: str = Field(..., example="A")
     factors: Dict[str, FactorDetail] = Field(default_factory=dict)
+    seo_details: Dict[str, Any] = Field(default_factory=dict)
     stats_summary: Dict[str, Any] = Field(default_factory=dict)
     key_recommendations: List[str] = Field(default_factory=list)
 
@@ -61,8 +63,11 @@ class PageAuditResult(BaseModel):
             "page_title": self.page_title,
             "meta_description": self.meta_description,
             "overall_score": round(self.overall_score, 1),
+            "geo_score": round(self.overall_score, 1),
+            "seo_score": round(self.seo_score, 1),
             "grade": self.grade,
             "factors": {k: v.to_dict() for k, v in self.factors.items()},
+            "seo_details": self.seo_details,
             "stats_summary": self.stats_summary,
             "key_recommendations": self.key_recommendations,
         }
@@ -78,6 +83,8 @@ class ComparativePageAudit(BaseModel):
     winner_brand: str = ""
     competitive_gap_summary: str = ""
     actionable_bullet_points: List[str] = Field(default_factory=list)
+    ai_visibility_score: Optional[float] = None
+    share_of_voice: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -89,4 +96,6 @@ class ComparativePageAudit(BaseModel):
             "winner_brand": self.winner_brand,
             "competitive_gap_summary": self.competitive_gap_summary,
             "actionable_bullet_points": self.actionable_bullet_points,
+            "ai_visibility_score": round(self.ai_visibility_score, 1) if self.ai_visibility_score is not None else None,
+            "share_of_voice": round(self.share_of_voice, 1) if self.share_of_voice is not None else None,
         }

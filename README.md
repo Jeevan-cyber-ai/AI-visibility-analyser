@@ -127,3 +127,4 @@ Open [http://localhost:5173/](http://localhost:5173/) or access the bundled app 
 
 ## 📄 License
 MIT License. Built for Generative Engine Optimization (GEO) researchers and modern engineering teams.
+

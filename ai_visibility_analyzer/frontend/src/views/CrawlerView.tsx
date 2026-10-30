@@ -23,6 +23,7 @@ import { LeaderboardTable } from '../components/LeaderboardTable';
 import { FactorCard } from '../components/FactorCard';
 import { RecommendationsRoadmap } from '../components/RecommendationsRoadmap';
 import { CrawlerPipelineStream } from '../components/CrawlerPipelineStream';
+import { ExecutiveScoreStrip } from '../components/ExecutiveScoreStrip';
 
 type AuditMode = 'real-apps' | 'our-project';
 
@@ -413,6 +414,26 @@ export const CrawlerView: React.FC = () => {
       {/* Results View */}
       {result && (
         <div className="audit-results-container">
+          {/* Executive 4-Pillar Score Strip (AI Visibility, GEO Score, SEO Score, Share of voice) */}
+          <ExecutiveScoreStrip
+            aiVisibility={
+              result.ai_visibility_score ??
+              (result.cluster_summary
+                ? Math.round(result.cluster_summary.mention_rate_pct * 0.7 + result.cluster_summary.citation_rate_pct * 0.3)
+                : Math.round(result.target_audit.overall_score * 0.75 + (result.target_audit.seo_score ?? 70) * 0.25))
+            }
+            geoScore={result.target_audit.overall_score}
+            seoScore={result.target_audit.seo_score ?? 70}
+            shareOfVoice={
+              result.share_of_voice ??
+              (result.cluster_summary
+                ? (result.brand_query_scores?.[result.target_brand.toLowerCase()]?.share_of_voice ?? 0)
+                : 25)
+            }
+            seoDetails={result.target_audit.seo_details}
+            brandName={result.target_brand}
+          />
+
           {/* Top Overview Grid */}
           <div className="grid-2 top-stats-grid">
             {/* Score Ring & Summary Card */}
