@@ -30,9 +30,28 @@ app = FastAPI(
 )
 
 # CORS Middleware
+# Allows all by default, with explicit Vercel regex matching and FRONTEND_URL env support
+allowed_origins_env = os.getenv("CORS_ORIGINS") or os.getenv("FRONTEND_URL") or "*"
+if allowed_origins_env == "*":
+    origins = ["*"]
+else:
+    origins = [o.strip() for o in allowed_origins_env.split(",") if o.strip()]
+
+# Common development, preview, and production origins
+origins.extend([
+    "https://ai-visibility-analyser-3t1g.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+])
+origins = list(set(origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",  # Matches any current and future Vercel deployment URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
