@@ -58,12 +58,17 @@ app.add_middleware(
 )
 
 
+import re
+
 @app.middleware("http")
 async def clean_path_middleware(request, call_next):
-    """Normalizes accidental duplicate prefixes like /api/api/ to prevent 404s."""
-    path = request.scope.get("path", "")
-    if path.startswith("/api/api/"):
-        request.scope["path"] = path[4:]
+    """Normalizes double slashes (e.g. //api/...) and duplicate prefixes (/api/api/...) to prevent 404s."""
+    raw_path = request.scope.get("path", "")
+    if "//" in raw_path or raw_path.startswith("/api/api/"):
+        cleaned = re.sub(r"/+", "/", raw_path)
+        if cleaned.startswith("/api/api/"):
+            cleaned = cleaned[4:]
+        request.scope["path"] = cleaned
     return await call_next(request)
 
 
