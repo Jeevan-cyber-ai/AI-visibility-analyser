@@ -57,6 +57,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def clean_path_middleware(request, call_next):
+    """Normalizes accidental duplicate prefixes like /api/api/ to prevent 404s."""
+    path = request.scope.get("path", "")
+    if path.startswith("/api/api/"):
+        request.scope["path"] = path[4:]
+    return await call_next(request)
+
+
 # Register Controller Routers (C in MVC)
 app.include_router(audit_router)
 app.include_router(content_router)
@@ -97,6 +107,19 @@ def serve_dashboard():
     }
 
 
+@app.get("/api", tags=["system"])
+def api_gateway_index():
+    """Returns overview of all available API endpoints."""
+    return {
+        "status": "healthy",
+        "service": "AI Visibility & GEO Analyzer API Gateway",
+        "docs": "/docs",
+        "health": "/api/health",
+        "providers": settings.get_available_providers(),
+    }
+
+
+@app.get("/health", tags=["system"])
 @app.get("/api/health", tags=["system"])
 def health_check():
     """Returns API health status and available LLM keys."""

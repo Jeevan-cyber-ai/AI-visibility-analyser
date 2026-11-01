@@ -13,40 +13,128 @@ import type {
   ContentDraftResponse,
 } from '../types/api';
 
-const RAW_BASE = import.meta.env.VITE_API_BASE_URL || '';
-const BASE_URL = RAW_BASE.replace(/\/+$/, '');
-const API_BASE = `${BASE_URL}/api`;
+// Normalize BASE_URL: trim whitespace, strip trailing slashes, strip duplicate /api
+let rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '');
+if (rawBase.endsWith('/api')) {
+  rawBase = rawBase.slice(0, -4);
+}
 
-async function parseJsonResponse<T>(res: Response, fallbackMsg: string): Promise<T> {
-  const contentType = res.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    const text = await res.text();
-    if (text.trim().toLowerCase().startsWith('<!doctype') || text.trim().toLowerCase().startsWith('<html')) {
-      throw new Error(
-        'Backend not connected. Received HTML from Vercel instead of API response. Please set VITE_API_BASE_URL in Vercel Settings -> Environment Variables to your Render backend URL (e.g. https://your-backend.onrender.com) and Redeploy.'
-      );
+export const BASE_URL = rawBase;
+export const API_BASE = `${BASE_URL}/api`;
+
+// Visual gateway banner in Developer Console
+console.log(
+  '%c[GEO Analyzer API Gateway]',
+  'background: #4f46e5; color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: bold;',
+  {
+    target_mode: BASE_URL ? 'Cloud Production (Render/External)' : 'Localhost / Relative Proxy',
+    raw_env_setting: import.meta.env.VITE_API_BASE_URL || '(empty / not set)',
+    computed_api_base: API_BASE,
+  }
+);
+
+/**
+ * Universal JSON fetcher with colored console logging for every API request and response.
+ */
+async function apiFetch<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  fallbackMsg: string = 'API request failed'
+): Promise<T> {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const fullUrl = `${API_BASE}${cleanEndpoint}`;
+  const method = options.method || 'GET';
+  const startTime = performance.now();
+
+  let bodyPayload: any = null;
+  if (options.body && typeof options.body === 'string') {
+    try {
+      bodyPayload = JSON.parse(options.body);
+    } catch {
+      bodyPayload = options.body;
     }
-    throw new Error(`${fallbackMsg}: Expected JSON but received ${contentType || 'non-JSON'}`);
   }
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || err.message || fallbackMsg);
+
+  // Log outgoing request
+  console.log(
+    `%c[API Request] %c${method} %c${fullUrl}`,
+    'color: #38bdf8; font-weight: bold;',
+    'color: #fbbf24; font-weight: bold;',
+    'color: #94a3b8;',
+    bodyPayload || '(no body)'
+  );
+
+  try {
+    const res = await fetch(fullUrl, options);
+    const durationMs = Math.round(performance.now() - startTime);
+    const contentType = res.headers.get('content-type') || '';
+
+    // Check if server returned HTML (common when proxying or when backend 404s to index.html)
+    if (!contentType.includes('application/json')) {
+      const rawText = await res.text();
+      if (rawText.trim().toLowerCase().startsWith('<!doctype') || rawText.trim().toLowerCase().startsWith('<html')) {
+        const errAlert = `Backend Not Connected: Request to "${fullUrl}" returned HTML instead of JSON. Ensure VITE_API_BASE_URL in Vercel is set to your Render URL (without /api) and redeployed.`;
+        console.error(
+          `%c[API 404 / HTML Error] %c${fullUrl} %c(${durationMs}ms)`,
+          'color: #f43f5e; font-weight: bold;',
+          'color: #fca5a5;',
+          'color: #64748b; font-size: 0.85em;',
+          errAlert
+        );
+        throw new Error(errAlert);
+      }
+      throw new Error(`${fallbackMsg}: Server returned non-JSON (${contentType || 'empty'})`);
+    }
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ detail: res.statusText }));
+      const msg = errData.detail || errData.message || `${fallbackMsg} (Status ${res.status})`;
+      console.error(
+        `%c[API Error ${res.status}] %c${fullUrl} %c(${durationMs}ms)`,
+        'color: #f43f5e; font-weight: bold;',
+        'color: #fca5a5;',
+        'color: #64748b; font-size: 0.85em;',
+        errData
+      );
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    console.log(
+      `%c[API Success ${res.status}] %c${fullUrl} %c(${durationMs}ms)`,
+      'color: #10b981; font-weight: bold;',
+      'color: #a7f3d0;',
+      'color: #64748b; font-size: 0.85em;',
+      data
+    );
+    return data;
+  } catch (err: any) {
+    const durationMs = Math.round(performance.now() - startTime);
+    console.error(
+      `%c[API Failed] %c${fullUrl} %c(${durationMs}ms)`,
+      'color: #ef4444; font-weight: bold;',
+      'color: #fca5a5;',
+      'color: #64748b; font-size: 0.85em;',
+      err.message
+    );
+    throw err;
   }
-  return res.json();
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {
-  const res = await fetch(`${API_BASE}/health`);
-  return parseJsonResponse<HealthResponse>(res, 'Health check failed');
+  return apiFetch<HealthResponse>('/health', { method: 'GET' }, 'Health check failed');
 }
 
 export async function auditPage(urlOrPath: string): Promise<PageAuditResult> {
-  const res = await fetch(`${API_BASE}/crawler/audit-page`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url_or_path: urlOrPath }),
-  });
-  return parseJsonResponse<PageAuditResult>(res, 'Failed to audit page');
+  return apiFetch<PageAuditResult>(
+    '/crawler/audit-page',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url_or_path: urlOrPath }),
+    },
+    'Failed to audit page'
+  );
 }
 
 export async function compareCompetitors(
@@ -73,12 +161,15 @@ export async function compareCompetitors(
     payload.provider = provider;
   }
 
-  const res = await fetch(`${API_BASE}/crawler/compare`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  return parseJsonResponse<ComparativePageAudit>(res, 'Failed to benchmark competitors');
+  return apiFetch<ComparativePageAudit>(
+    '/crawler/compare',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+    'Failed to benchmark competitors'
+  );
 }
 
 export async function auditCluster(params: {
@@ -89,20 +180,20 @@ export async function auditCluster(params: {
   count?: number;
   provider?: string;
 }): Promise<{ cluster_summary: ClusterSummary; comparative_report: ComparativeAuditReport }> {
-  const res = await fetch(`${API_BASE}/audit/cluster`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: params.query,
-      brand_url: params.brandUrl,
-      competitors: params.competitors,
-      auto_discover_competitors: params.autoDiscover ?? true,
-      count: params.count ?? 5,
-      provider: params.provider || 'Gemini',
-    }),
-  });
-  return parseJsonResponse<{ cluster_summary: ClusterSummary; comparative_report: ComparativeAuditReport }>(
-    res,
+  return apiFetch<{ cluster_summary: ClusterSummary; comparative_report: ComparativeAuditReport }>(
+    '/audit/cluster',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: params.query,
+        brand_url: params.brandUrl,
+        competitors: params.competitors,
+        auto_discover_competitors: params.autoDiscover ?? true,
+        count: params.count ?? 5,
+        provider: params.provider || 'Gemini',
+      }),
+    },
     'Failed to audit query cluster'
   );
 }
@@ -116,20 +207,23 @@ export async function runFullAudit(params: {
   count?: number;
   provider?: string;
 }): Promise<FullAuditResponse> {
-  const res = await fetch(`${API_BASE}/audit/full`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: params.query,
-      brand_url: params.brandUrl,
-      on_page_target: params.onPageTarget,
-      competitors: params.competitors,
-      auto_discover_competitors: params.autoDiscover ?? true,
-      count: params.count ?? 5,
-      provider: params.provider || 'Gemini',
-    }),
-  });
-  return parseJsonResponse<FullAuditResponse>(res, 'Failed to run full audit');
+  return apiFetch<FullAuditResponse>(
+    '/audit/full',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: params.query,
+        brand_url: params.brandUrl,
+        on_page_target: params.onPageTarget,
+        competitors: params.competitors,
+        auto_discover_competitors: params.autoDiscover ?? true,
+        count: params.count ?? 5,
+        provider: params.provider || 'Gemini',
+      }),
+    },
+    'Failed to run full audit'
+  );
 }
 
 export async function discoverCompetitors(
@@ -137,16 +231,19 @@ export async function discoverCompetitors(
   limit: number = 4,
   provider: string = 'Gemini'
 ): Promise<{ competitors: CompetitorInfo[] }> {
-  const res = await fetch(`${API_BASE}/competitors/discover`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      brand_or_topic: brandOrTopic,
-      limit,
-      provider,
-    }),
-  });
-  return parseJsonResponse<{ competitors: CompetitorInfo[] }>(res, 'Failed to discover competitors');
+  return apiFetch<{ competitors: CompetitorInfo[] }>(
+    '/competitors/discover',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        brand_or_topic: brandOrTopic,
+        limit,
+        provider,
+      }),
+    },
+    'Failed to discover competitors'
+  );
 }
 
 export async function expandQueries(
@@ -156,27 +253,33 @@ export async function expandQueries(
   count: number = 5,
   provider: string = 'Gemini'
 ): Promise<{ queries: QueryVariation[] }> {
-  const res = await fetch(`${API_BASE}/queries/expand`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query,
-      brand_url: brandUrl,
-      competitors,
-      count,
-      provider,
-    }),
-  });
-  return parseJsonResponse<{ queries: QueryVariation[] }>(res, 'Failed to expand queries');
+  return apiFetch<{ queries: QueryVariation[] }>(
+    '/queries/expand',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query,
+        brand_url: brandUrl,
+        competitors,
+        count,
+        provider,
+      }),
+    },
+    'Failed to expand queries'
+  );
 }
 
 export async function generateContentDraft(req: ContentDraftRequest): Promise<ContentDraftResponse> {
-  const res = await fetch(`${API_BASE}/content/draft`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(req),
-  });
-  return parseJsonResponse<ContentDraftResponse>(res, 'Failed to generate content draft');
+  return apiFetch<ContentDraftResponse>(
+    '/content/draft',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req),
+    },
+    'Failed to generate content draft'
+  );
 }
 
 export async function fetchCitationGaps(params: {
@@ -185,17 +288,20 @@ export async function fetchCitationGaps(params: {
   competitors?: string[];
   provider?: string;
 }): Promise<CitationGapResponse> {
-  const res = await fetch(`${API_BASE}/citation-gap/analyse`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: params.query,
-      brand_url: params.brandUrl,
-      competitors: params.competitors,
-      provider: params.provider || 'Gemini',
-    }),
-  });
-  return parseJsonResponse<CitationGapResponse>(res, 'Failed to fetch citation gap analysis');
+  return apiFetch<CitationGapResponse>(
+    '/citation-gap/analyse',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: params.query,
+        brand_url: params.brandUrl,
+        competitors: params.competitors,
+        provider: params.provider || 'Gemini',
+      }),
+    },
+    'Failed to fetch citation gap analysis'
+  );
 }
 
 export async function fetchEvidenceAdvisor(params: {
@@ -205,16 +311,19 @@ export async function fetchEvidenceAdvisor(params: {
   competitors?: string[];
   provider?: string;
 }): Promise<EvidenceAdvisorResponse> {
-  const res = await fetch(`${API_BASE}/advisor/evidence`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: params.query,
-      brand_url: params.brandUrl,
-      on_page_target: params.onPageTarget,
-      competitors: params.competitors,
-      provider: params.provider || 'Gemini',
-    }),
-  });
-  return parseJsonResponse<EvidenceAdvisorResponse>(res, 'Failed to fetch evidence advisor analysis');
+  return apiFetch<EvidenceAdvisorResponse>(
+    '/advisor/evidence',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: params.query,
+        brand_url: params.brandUrl,
+        on_page_target: params.onPageTarget,
+        competitors: params.competitors,
+        provider: params.provider || 'Gemini',
+      }),
+    },
+    'Failed to fetch evidence advisor analysis'
+  );
 }
