@@ -144,7 +144,8 @@ class CrawlerService:
             brand_name=brand_name,
         )
 
-        overall_score = sum(f.score * f.weight for f in factors.values())
+        overall_score = min(100.0, max(0.0, round(sum(f.score * f.weight for f in factors.values()), 1)))
+        seo_score = min(100.0, max(0.0, round(seo_score, 1)))
         grade = PageAuditResult.calculate_grade(overall_score)
 
         # Aggregate bullet recommendations
@@ -186,7 +187,7 @@ class CrawlerService:
         Audits the target page and compares its score and factors directly against competitors.
         """
         target_audit = cls.audit_page(target)
-        target_brand = target_audit.brand_name
+        target_brand = getattr(target_audit, "brand_name", None) or cls._extract_brand(getattr(target_audit, "page_title", None), target)
 
         competitor_audits: List[PageAuditResult] = []
 
@@ -239,20 +240,24 @@ class CrawlerService:
 
         rank_pos = 1
         for idx, item in enumerate(all_participants, 1):
-            if item.url_or_path == target_audit.url_or_path or item.brand_name == target_audit.brand_name:
+            i_brand = getattr(item, "brand_name", "")
+            t_brand = getattr(target_audit, "brand_name", target_brand)
+            if item.url_or_path == target_audit.url_or_path or (i_brand and t_brand and i_brand.lower() == t_brand.lower()):
                 rank_pos = idx
                 break
 
         winner = all_participants[0]
+        winner_name = getattr(winner, "brand_name", "Market Leader")
         total_count = len(all_participants)
 
         # Gap Summary
         if target_audit.overall_score >= winner.overall_score:
+            runner_up_name = getattr(all_participants[1], "brand_name", "competitor") if len(all_participants) > 1 else 'competitors'
             diff = round(target_audit.overall_score - (all_participants[1].overall_score if len(all_participants) > 1 else 0), 1)
-            gap_summary = f"Leaderboard Winner: {target_brand} ranks #1 out of {total_count} sites with a score of {target_audit.overall_score:.1f}/100 (+{diff} pts ahead of {all_participants[1].brand_name if len(all_participants) > 1 else 'competitors'})."
+            gap_summary = f"Leaderboard Winner: {target_brand} ranks #1 out of {total_count} sites with a score of {target_audit.overall_score:.1f}/100 (+{diff} pts ahead of {runner_up_name})."
         else:
             diff = round(winner.overall_score - target_audit.overall_score, 1)
-            gap_summary = f"Competitive Deficit: {target_brand} ranks #{rank_pos} out of {total_count} sites ({target_audit.overall_score:.1f}/100), lagging behind market leader {winner.brand_name} ({winner.overall_score:.1f}/100) by -{diff} points."
+            gap_summary = f"Competitive Deficit: {target_brand} ranks #{rank_pos} out of {total_count} sites ({target_audit.overall_score:.1f}/100), lagging behind market leader {winner_name} ({winner.overall_score:.1f}/100) by -{diff} points."
 
         # Actionable bullet points (descriptions only, no code blocks)
         action_bullets: List[str] = []
@@ -272,7 +277,7 @@ class CrawlerService:
             competitors=competitor_audits,
             rank_position=rank_pos,
             total_sites=total_count,
-            winner_brand=winner.brand_name,
+            winner_brand=winner_name,
             competitive_gap_summary=gap_summary,
             actionable_bullet_points=action_bullets,
             ai_visibility_score=ai_vis,
@@ -348,7 +353,7 @@ class CrawlerService:
     # -------------------------------------------------------------------------
     @classmethod
     def _evaluate_robots(cls, robots_txt: Optional[str], brand_name: str = "your brand") -> FactorDetail:
-        weight = 0.20
+        weight = 0.15
         if not robots_txt:
             return FactorDetail(
                 name="AI Crawler Access (robots.txt)",
@@ -412,7 +417,7 @@ class CrawlerService:
     # -------------------------------------------------------------------------
     @classmethod
     def _evaluate_schema(cls, soup: BeautifulSoup, brand_name: str = "your brand") -> Tuple[FactorDetail, List[str]]:
-        weight = 0.20
+        weight = 0.15
         schemas_found: List[str] = []
         schema_scripts = soup.find_all("script", attrs={"type": "application/ld+json"})
 
