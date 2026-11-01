@@ -35,6 +35,7 @@ class FactorDetail(BaseModel):
 class PageAuditResult(BaseModel):
     """Aggregate result of an on-page GEO crawl and audit."""
     url_or_path: str
+    brand_name: str = Field(default="", example="Notion")
     page_title: Optional[str] = None
     meta_description: Optional[str] = None
     overall_score: float = Field(..., ge=0.0, le=100.0)
@@ -60,6 +61,7 @@ class PageAuditResult(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         return {
             "url_or_path": self.url_or_path,
+            "brand_name": self.brand_name,
             "page_title": self.page_title,
             "meta_description": self.meta_description,
             "overall_score": round(self.overall_score, 1),
