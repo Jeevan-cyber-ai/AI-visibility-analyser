@@ -38,8 +38,8 @@ class PageAuditResult(BaseModel):
     brand_name: str = Field(default="", example="Notion")
     page_title: Optional[str] = None
     meta_description: Optional[str] = None
-    overall_score: float = Field(..., ge=0.0, le=100.0)
-    seo_score: float = Field(default=70.0, ge=0.0, le=100.0)
+    overall_score: float = Field(default=0.0)
+    seo_score: float = Field(default=70.0)
     grade: str = Field(..., example="A")
     factors: Dict[str, FactorDetail] = Field(default_factory=dict)
     seo_details: Dict[str, Any] = Field(default_factory=dict)
@@ -59,14 +59,16 @@ class PageAuditResult(BaseModel):
         return "F"
 
     def to_dict(self) -> Dict[str, Any]:
+        clamped_overall = round(min(100.0, max(0.0, self.overall_score)), 1)
+        clamped_seo = round(min(100.0, max(0.0, self.seo_score)), 1)
         return {
             "url_or_path": self.url_or_path,
             "brand_name": self.brand_name,
             "page_title": self.page_title,
             "meta_description": self.meta_description,
-            "overall_score": round(self.overall_score, 1),
-            "geo_score": round(self.overall_score, 1),
-            "seo_score": round(self.seo_score, 1),
+            "overall_score": clamped_overall,
+            "geo_score": clamped_overall,
+            "seo_score": clamped_seo,
             "grade": self.grade,
             "factors": {k: v.to_dict() for k, v in self.factors.items()},
             "seo_details": self.seo_details,
