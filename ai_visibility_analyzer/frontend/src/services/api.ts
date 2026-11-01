@@ -13,7 +13,8 @@ import type {
   ContentDraftResponse,
 } from '../types/api';
 
-const API_BASE = '/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = `${BASE_URL}/api`;
 
 export async function fetchHealth(): Promise<HealthResponse> {
   const res = await fetch(`${API_BASE}/health`);
