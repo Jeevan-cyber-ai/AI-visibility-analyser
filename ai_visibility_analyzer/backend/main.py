@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse
 
 from config.settings import settings
 from controllers.audit_controller import router as audit_router
+from controllers.content_controller import router as content_router
 
 current_dir = Path(__file__).resolve().parent
 static_dir = current_dir / "static"
@@ -39,6 +40,7 @@ app.add_middleware(
 
 # Register Controller Routers (C in MVC)
 app.include_router(audit_router)
+app.include_router(content_router)
 
 # Mount Sample Websites for live browsing
 if sample_v1_dir.exists():

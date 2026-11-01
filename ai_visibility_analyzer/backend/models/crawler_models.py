@@ -12,10 +12,11 @@ class FactorDetail(BaseModel):
     name: str
     weight: float = Field(..., ge=0.0, le=1.0)
     score: float = Field(..., ge=0.0, le=100.0)
-    status: str = Field(..., example="PASSED")  # "PASSED" | "WARNING" | "FAILED"
+    status: str = Field(..., example="PASSED")  #"PASSED" | "WARNING" | "FAILED"
     summary: str
     evidence: List[str] = Field(default_factory=list)
     recommendations: List[str] = Field(default_factory=list)
+    suggested_snippet: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -27,13 +28,13 @@ class FactorDetail(BaseModel):
             "summary": self.summary,
             "evidence": self.evidence,
             "recommendations": self.recommendations,
+            "suggested_snippet": self.suggested_snippet,
         }
 
 
 class PageAuditResult(BaseModel):
-    """Aggregate result of an on-page GEO crawl and audit for a single page."""
+    """Aggregate result of an on-page GEO crawl and audit."""
     url_or_path: str
-    brand_name: str = "Unknown"
     page_title: Optional[str] = None
     meta_description: Optional[str] = None
     overall_score: float = Field(..., ge=0.0, le=100.0)
@@ -59,7 +60,6 @@ class PageAuditResult(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         return {
             "url_or_path": self.url_or_path,
-            "brand_name": self.brand_name,
             "page_title": self.page_title,
             "meta_description": self.meta_description,
             "overall_score": round(self.overall_score, 1),

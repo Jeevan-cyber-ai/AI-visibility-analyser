@@ -390,3 +390,4 @@ export const ExecutiveScoreStrip: React.FC<ExecutiveScoreStripProps> = ({
     </div>
   );
 };
+

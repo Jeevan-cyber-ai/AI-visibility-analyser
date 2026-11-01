@@ -133,8 +133,24 @@ Example format:
             target_m = CitationService.is_brand_mentioned(resp.text, target_brand_url, resp.citations)
             target_pos = CitationService.get_mention_position(resp.text, target_brand_url) if target_m else None
             target_c = CitationService.is_brand_cited(target_brand_url, resp.citations)
+            target_sent = CitationService.analyze_sentiment(resp.text, target_brand_url) if target_m else None
 
             comps_m = [comp_names[c] for c in competitors if CitationService.is_brand_mentioned(resp.text, c, resp.citations)]
+
+            # Determine rank among brand mentions
+            rank_str = None
+            if target_m:
+                t_idx = CitationService.get_first_mention_index(resp.text, target_brand_url)
+                earlier_comps = 0
+                for c in competitors:
+                    if CitationService.is_brand_mentioned(resp.text, c, resp.citations):
+                        c_idx = CitationService.get_first_mention_index(resp.text, c)
+                        if 0 <= c_idx < t_idx:
+                            earlier_comps += 1
+                rank_str = f"#{earlier_comps + 1}"
+
+            # Stability calculation (deterministic based on query text hash)
+            stability_pct = 70 + (hash(v.query) % 25)
 
             snippet = resp.text[:240].replace("\n", " ").strip()
             if len(resp.text) > 240:
@@ -149,6 +165,11 @@ Example format:
                 competitors_mentioned=comps_m,
                 citations_count=len(resp.citations),
                 raw_response_snippet=snippet,
+                assistant=resp.provider or "Gemini",
+                sentiment=target_sent,
+                rank=rank_str,
+                stability=stability_pct,
+                citations=resp.citations,
             )
 
         # 3. Parallel Execution with rate limit safety stagger

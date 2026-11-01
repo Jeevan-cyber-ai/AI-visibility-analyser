@@ -70,6 +70,7 @@ export interface ComparativePageAudit {
 export interface QueryVariation {
   query: string;
   intent: string;
+  family?: 'discovery' | 'branded';
 }
 
 export interface QueryAuditResult {
@@ -81,6 +82,11 @@ export interface QueryAuditResult {
   competitors_mentioned: string[];
   citations_count: number;
   raw_response_snippet: string;
+  assistant?: string;
+  sentiment?: "Positive" | "Neutral" | "Negative" | null;
+  rank?: string | null;
+  stability?: number | null;
+  citations?: string[];
 }
 
 export interface ClusterSummary {
@@ -137,4 +143,121 @@ export interface HealthResponse {
   status: string;
   providers: Record<string, boolean>;
   has_live_key: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Module 4: Citation Gap & Where to Get Listed Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CitationGapEntry {
+  domain: string;
+  source_type: 'platform' | 'community' | 'publisher' | 'video' | 'listing';
+  gap_citation_count: number;
+  total_citation_count: number;
+  priority: number;
+  competitors_seen_with: string[];
+  example_queries: string[];
+  action: string;
+  is_observed: boolean;
+}
+
+export interface CitationGapReport {
+  target_domain: string;
+  observed: CitationGapEntry[];
+  suggested: CitationGapEntry[];
+  total_answers_analysed: number;
+  gap_answers_count: number;
+}
+
+export interface CitationGapResponse {
+  brand_url: string;
+  query: string;
+  gap_report: CitationGapReport;
+  cluster_summary: ClusterSummary;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Module 5: Evidence-Grounded Advisor Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface EvidenceItem {
+  id: string;
+  finding: string;
+  category: 'mention_gap' | 'citation_gap' | 'geo_factor' | 'citation_source_gap';
+  severity: 'high' | 'medium' | 'low';
+  domain?: string;
+  action?: string;
+}
+
+export interface AdvisorRecommendation {
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  title: string;
+  recommendation: string;
+  evidence_ids: string[];
+  impact: string;
+  category?: 'Technical' | 'Structured Data' | 'Content' | 'Off-site presence';
+  effort?: 'low' | 'medium' | 'high';
+}
+
+export interface EvidenceAdvisorResponse {
+  brand_url: string;
+  query: string;
+  evidence: EvidenceItem[];
+  recommendations: AdvisorRecommendation[];
+  cluster_summary: ClusterSummary;
+  gap_report: CitationGapReport;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Module 6: Content Studio Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface GeoChecklist {
+  direct_answer_at_top: boolean;
+  headings_as_questions: boolean;
+  comparison_table: boolean;
+  scannable_list: boolean;
+  faq_section: boolean;
+  word_count_700_plus: boolean;
+  data_points_or_stats: boolean;
+  score: number;
+}
+
+export interface KeywordPlacement {
+  keyword: string;
+  in_title: boolean;
+  in_first_100_words: boolean;
+  in_at_least_one_h2: boolean;
+  density_pct: number;
+  density_status: 'passed' | 'warning';
+}
+
+export interface SecondaryKeywordCount {
+  keyword: string;
+  count: number;
+}
+
+export interface ContentDraftRequest {
+  question: string;
+  website?: string;
+  keywords?: string;
+  audience?: string;
+  tone?: string;
+  word_count?: number;
+  provider?: string;
+}
+
+export interface ContentDraftResponse {
+  article_markdown: string;
+  article_html: string;
+  geo_checklist: GeoChecklist;
+  facts_to_confirm: string[];
+  suggested_schema: string;
+  word_count: number;
+  geo_score: number;
+  meta_title: string;
+  meta_description: string;
+  page_url: string;
+  primary_keyword_analysis?: KeywordPlacement;
+  secondary_keywords: SecondaryKeywordCount[];
 }

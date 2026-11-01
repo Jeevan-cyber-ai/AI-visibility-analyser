@@ -7,11 +7,22 @@ import {
   Award,
   Search,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Lightbulb,
+  ListOrdered,
+  PenTool
 } from 'lucide-react';
 import type { HealthResponse } from '../types/api';
 
-export type NavTab = 'crawler' | 'cluster' | 'competitors' | 'experiment' | 'overview';
+export type NavTab =
+  | 'crawler'
+  | 'cluster'
+  | 'listings'
+  | 'advisor'
+  | 'studio'
+  | 'competitors'
+  | 'experiment'
+  | 'overview';
 
 interface NavbarProps {
   activeTab: NavTab;
@@ -31,6 +42,24 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onTabChange, health }
       id: 'cluster',
       label: 'AI Query Cluster',
       icon: <Search size={18} />,
+    },
+    {
+      id: 'listings',
+      label: 'Where to Get Listed',
+      icon: <ListOrdered size={18} />,
+      badge: 'Mod 4'
+    },
+    {
+      id: 'advisor',
+      label: 'AI Advisor',
+      icon: <Lightbulb size={18} />,
+      badge: 'Mod 5'
+    },
+    {
+      id: 'studio',
+      label: 'Content Studio',
+      icon: <PenTool size={18} />,
+      badge: 'Mod 6'
     },
     {
       id: 'competitors',

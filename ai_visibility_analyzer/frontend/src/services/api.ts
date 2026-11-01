@@ -6,7 +6,11 @@ import type {
   ComparativeAuditReport,
   FullAuditResponse,
   CompetitorInfo,
-  QueryVariation
+  QueryVariation,
+  CitationGapResponse,
+  EvidenceAdvisorResponse,
+  ContentDraftRequest,
+  ContentDraftResponse,
 } from '../types/api';
 
 const API_BASE = '/api';
@@ -164,6 +168,67 @@ export async function expandQueries(
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || 'Failed to expand queries');
+  }
+  return res.json();
+}
+
+export async function generateContentDraft(req: ContentDraftRequest): Promise<ContentDraftResponse> {
+  const res = await fetch(`${API_BASE}/content/draft`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to generate content draft');
+  }
+  return res.json();
+}
+
+export async function fetchCitationGaps(params: {
+  query: string;
+  brandUrl: string;
+  competitors?: string[];
+  provider?: string;
+}): Promise<CitationGapResponse> {
+  const res = await fetch(`${API_BASE}/citation-gap/analyse`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: params.query,
+      brand_url: params.brandUrl,
+      competitors: params.competitors,
+      provider: params.provider || 'Gemini',
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to fetch citation gap analysis');
+  }
+  return res.json();
+}
+
+export async function fetchEvidenceAdvisor(params: {
+  query: string;
+  brandUrl: string;
+  onPageTarget?: string;
+  competitors?: string[];
+  provider?: string;
+}): Promise<EvidenceAdvisorResponse> {
+  const res = await fetch(`${API_BASE}/advisor/evidence`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      query: params.query,
+      brand_url: params.brandUrl,
+      on_page_target: params.onPageTarget,
+      competitors: params.competitors,
+      provider: params.provider || 'Gemini',
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to fetch evidence advisor analysis');
   }
   return res.json();
 }

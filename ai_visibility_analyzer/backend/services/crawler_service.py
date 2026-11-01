@@ -115,13 +115,14 @@ class CrawlerService:
         words = plain_text.split()
         word_count = len(words)
 
-        # Evaluate 6 factors dynamically for the target brand
+        # Evaluate 7 factors dynamically for the target brand (aligned with Slide 17)
         f_robots = cls._evaluate_robots(robots_content, brand_name)
         f_schema, schemas_found = cls._evaluate_schema(soup, brand_name)
         f_answers, direct_answers = cls._evaluate_direct_answers(soup, brand_name)
         f_stats, stats_found = cls._evaluate_statistics(plain_text, word_count, brand_name)
         f_eeat = cls._evaluate_eeat(soup, plain_text, brand_name)
         f_freshness = cls._evaluate_freshness(soup, plain_text, brand_name)
+        f_depth = cls._evaluate_content_depth(word_count, brand_name)
 
         factors = {
             "ai_crawler_access": f_robots,
@@ -130,6 +131,7 @@ class CrawlerService:
             "statistical_density": f_stats,
             "eeat_credibility": f_eeat,
             "content_freshness": f_freshness,
+            "content_depth": f_depth,
         }
 
         # Evaluate Classic SEO Score (on-page search health)
@@ -202,7 +204,15 @@ class CrawlerService:
         if not competitor_audits:
             for k, prof in cls.STANDARD_COMPETITOR_PROFILES.items():
                 factors_dict: Dict[str, FactorDetail] = {}
-                weights = {"ai_crawler_access": 0.20, "structured_data": 0.20, "direct_answers": 0.15, "statistical_density": 0.15, "eeat_credibility": 0.15, "content_freshness": 0.15}
+                weights = {
+                    "ai_crawler_access": 0.15,
+                    "structured_data": 0.15,
+                    "direct_answers": 0.15,
+                    "statistical_density": 0.15,
+                    "eeat_credibility": 0.15,
+                    "content_freshness": 0.15,
+                    "content_depth": 0.10,
+                }
                 for f_name, f_score in prof["factors"].items():
                     factors_dict[f_name] = FactorDetail(
                         name=f_name.replace("_", " ").title(),
@@ -625,9 +635,6 @@ class CrawlerService:
             recommendations=recs,
         )
 
-    # -------------------------------------------------------------------------
-    # Factor 6: Freshness & Temporal Anchoring
-    # -------------------------------------------------------------------------
     @classmethod
     def _evaluate_freshness(cls, soup: BeautifulSoup, text: str, brand_name: str = "your brand") -> FactorDetail:
         weight = 0.15
@@ -667,6 +674,44 @@ class CrawlerService:
             evidence=evidence if evidence else ["No semantic <time> tags or recent year anchors detected"],
             recommendations=recs,
         )
+
+    @classmethod
+    def _evaluate_content_depth(cls, word_count: int, brand_name: str) -> FactorDetail:
+        weight = 0.10
+        if word_count >= 700:
+            return FactorDetail(
+                name="Content Depth & Topical Breadth",
+                weight=weight,
+                score=100.0,
+                status="PASSED",
+                summary=f"Strong topical depth ({word_count} words). Generative models favor comprehensive articles with 700+ words.",
+                evidence=[f"Word count: {word_count} words (exceeds 700-word threshold)"],
+                recommendations=[],
+            )
+        elif word_count >= 400:
+            return FactorDetail(
+                name="Content Depth & Topical Breadth",
+                weight=weight,
+                score=65.0,
+                status="WARNING",
+                summary=f"Moderate content depth ({word_count} words). Generative models prioritize comprehensive resources with 700+ words.",
+                evidence=[f"Word count: {word_count} words (below 700-word target)"],
+                recommendations=[
+                    f"Expand {brand_name}'s page content to 700+ words by adding comprehensive sections, FAQ answers, and technical breakdown.",
+                ],
+            )
+        else:
+            return FactorDetail(
+                name="Content Depth & Topical Breadth",
+                weight=weight,
+                score=25.0,
+                status="FAILED",
+                summary=f"Thin content ({word_count} words). Pages under 400 words are rarely cited as comprehensive authorities by AI engines.",
+                evidence=[f"Word count: {word_count} words (critically thin for AI reference)"],
+                recommendations=[
+                    f"Significantly expand page depth for {brand_name} with at least 700-1200 words covering use cases, architecture, and FAQs.",
+                ],
+            )
 
     # -------------------------------------------------------------------------
     # Pillar: Classic On-Page Search Health (SEO Score)

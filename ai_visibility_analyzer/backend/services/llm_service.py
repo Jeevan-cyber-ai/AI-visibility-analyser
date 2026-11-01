@@ -264,11 +264,48 @@ class MistralClient(BaseLLMClient):
         return MockClient("Mistral").query(prompt)
 
 
+class ClaudeClient(BaseLLMClient):
+    """
+    Anthropic Claude client.
+    Supports Claude 3.5 Sonnet / Haiku.
+    Providers without a key fall back to clearly labelled simulated answers.
+    """
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or getattr(settings, "ANTHROPIC_API_KEY", None)
+
+    def query(self, prompt: str) -> LLMResponse:
+        if not self.api_key:
+            return MockClient("Claude").query(prompt)
+
+        headers = {
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": "claude-3-5-sonnet-20241022",
+            "max_tokens": 1024,
+            "system": SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        try:
+            r = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=payload, timeout=35)
+            if r.ok:
+                data = r.json()
+                text = data["content"][0]["text"]
+                return LLMResponse(provider="Claude", query=prompt, text=text, citations=[], is_mock=False)
+        except Exception:
+            pass
+        return MockClient("Claude").query(prompt)
+
+
 def get_llm_client(provider: str = "Gemini") -> BaseLLMClient:
     """Factory helper to obtain the requested LLM client."""
     provider_lower = provider.lower()
     if "gemini" in provider_lower or "google" in provider_lower:
         return GeminiClient()
+    elif "claude" in provider_lower or "anthropic" in provider_lower:
+        return ClaudeClient()
     elif "groq" in provider_lower:
         return GroqClient()
     elif "mistral" in provider_lower:

@@ -1,0 +1,15 @@
+AI Visibility & GEO Analyzer - Execution Commands
+==================================================
+
+1. Start Backend API & SPA Host (Port 8000):
+   python -m uvicorn main:app --reload --port 8000 --app-dir "ai_visibility_analyzer\backend"
+
+2. Start Frontend Vite HMR Dev Server (Port 5173 - Optional):
+   cd "ai_visibility_analyzer\frontend"
+   npm run dev
+
+3. Build Production Frontend Assets (dist/):
+   npm --prefix "ai_visibility_analyzer\frontend" run build
+
+4. Open Web Application:
+   http://localhost:8000/

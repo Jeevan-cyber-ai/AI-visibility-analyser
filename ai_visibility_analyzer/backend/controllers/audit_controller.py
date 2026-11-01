@@ -14,6 +14,7 @@ from services.query_service import QueryService
 from services.citation_service import CitationService
 from services.crawler_service import CrawlerService
 from services.scoring_service import ScoringService
+from services.citation_gap_service import CitationGapService
 from services.llm_service import get_llm_client
 
 router = APIRouter(prefix="/api", tags=["audit"])
@@ -239,5 +240,305 @@ def expand_queries_endpoint(req: ExpandQueriesRequest):
             count=req.count,
         )
         return {"variations": [v.to_dict() for v in variations]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Module 4: Citation Gap Analysis
+# ──────────────────────────────────────────────────────────────────────────────
+
+class CitationGapRequest(BaseModel):
+    query: str = Field(..., example="best project management software")
+    brand_url: str = Field(..., example="https://pulsetask.io")
+    competitors: Optional[List[str]] = None
+    auto_discover_competitors: bool = Field(default=True)
+    count: int = Field(default=5, ge=3, le=10)
+    provider: str = Field(default="Gemini")
+
+
+@router.post("/citation-gap/analyse")
+def citation_gap_endpoint(req: CitationGapRequest):
+    """
+    Module 4: Citation Gap Analysis.
+    Runs a query cluster audit, then analyses which third-party sources
+    AI assistants cite when competitors win and the target brand is absent.
+    Returns ranked observed gaps and suggested industry listings.
+    """
+    try:
+        client = get_llm_client(req.provider)
+        summary = QueryService.audit_cluster(
+            seed_query=req.query,
+            target_brand_url=req.brand_url,
+            competitors=req.competitors,
+            auto_discover_competitors=req.auto_discover_competitors,
+            client=client,
+        )
+
+        # Build cluster result dicts for the gap service
+        cluster_dicts = [r.to_dict() for r in summary.results]
+
+        # Competitor URLs from discovered competitors
+        competitor_urls = list(summary.competitor_mentions.keys()) if summary.competitor_mentions else []
+        if req.competitors:
+            competitor_urls = req.competitors + competitor_urls
+
+        gap_report = CitationGapService.analyse(
+            cluster_results=cluster_dicts,
+            target_brand_url=req.brand_url,
+            competitor_urls=competitor_urls,
+        )
+
+        return {
+            "brand_url": req.brand_url,
+            "query": req.query,
+            "gap_report": gap_report.to_dict(),
+            "cluster_summary": summary.to_dict(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Module 5: Evidence-Grounded AI Advisor
+# ──────────────────────────────────────────────────────────────────────────────
+
+class EvidenceAdvisorRequest(BaseModel):
+    query: str = Field(..., example="best agile sprint software")
+    brand_url: str = Field(..., example="https://pulsetask.io")
+    on_page_target: Optional[str] = Field(default=None)
+    competitors: Optional[List[str]] = None
+    auto_discover_competitors: bool = Field(default=True)
+    count: int = Field(default=5, ge=3, le=10)
+    provider: str = Field(default="Gemini")
+
+
+def _build_evidence_list(
+    summary, comp_audit, gap_report
+) -> List[Dict[str, Any]]:
+    """
+    Assembles structured evidence items E1..En from:
+    - Query cluster results (mention, citation, SOV gaps)
+    - On-page GEO/SEO audit findings
+    - Citation gap observations
+    """
+    evidence = []
+    eid = 1
+
+    # Evidence from mention rate
+    if summary:
+        m_rate = summary.mention_rate_pct
+        c_rate = summary.citation_rate_pct
+        if m_rate < 50:
+            evidence.append({
+                "id": f"E{eid}",
+                "finding": f"Brand mentioned in only {round(m_rate)}% of AI queries for '{summary.seed_query}'",
+                "category": "mention_gap",
+                "severity": "high" if m_rate < 25 else "medium",
+            })
+            eid += 1
+        if c_rate < 30:
+            evidence.append({
+                "id": f"E{eid}",
+                "finding": f"Brand cited as a source URL in only {round(c_rate)}% of answers — AI assistants don't trust the domain enough to link it",
+                "category": "citation_gap",
+                "severity": "high",
+            })
+            eid += 1
+
+    # Evidence from on-page audit
+    if comp_audit:
+        target = comp_audit.get("target_audit", {})
+        factors = target.get("factors", {})
+        for factor_name, factor_data in factors.items():
+            if isinstance(factor_data, dict) and not factor_data.get("passes", True):
+                evidence.append({
+                    "id": f"E{eid}",
+                    "finding": f"On-page GEO factor failed: {factor_data.get('label', factor_name)} — {factor_data.get('detail', '')}",
+                    "category": "geo_factor",
+                    "severity": "medium",
+                })
+                eid += 1
+
+    # Evidence from citation gaps
+    if gap_report and gap_report.get("observed"):
+        for gap_entry in gap_report["observed"][:5]:
+            dom = gap_entry["domain"]
+            n = gap_entry["gap_citation_count"]
+            comps = ", ".join(gap_entry.get("competitors_seen_with", [])[:2])
+            evidence.append({
+                "id": f"E{eid}",
+                "finding": f"{dom} was cited {n} times in answers where {comps or 'competitors'} were recommended and target was missing",
+                "category": "citation_source_gap",
+                "severity": "high" if n >= 3 else "medium",
+                "domain": dom,
+                "action": gap_entry.get("action", ""),
+            })
+            eid += 1
+
+    return evidence
+
+
+def _generate_advisor_recommendations(
+    evidence: List[Dict], client, provider: str
+) -> List[Dict[str, Any]]:
+    """
+    Calls LLM to generate evidence-grounded recommendations.
+    Each recommendation must cite evidence IDs.
+    Falls back to rule-based if LLM fails.
+    """
+    if not evidence:
+        return []
+
+    evidence_text = "\n".join(
+        f"{e['id']} ({e['category']}, {e['severity']}): {e['finding']}"
+        for e in evidence
+    )
+
+    prompt = f"""You are an AI visibility strategy advisor.
+Below are measured evidence items (E-codes) from an analysis run.
+Generate exactly 5 JSON recommendations. Each MUST cite at least one evidence ID.
+
+EVIDENCE:
+{evidence_text}
+
+Return ONLY a valid JSON array like:
+[
+  {{
+    "priority": "HIGH",
+    "title": "Short action title",
+    "recommendation": "Concrete 1-2 sentence action",
+    "evidence_ids": ["E1", "E3"],
+    "impact": "Expected outcome"
+  }}
+]
+No extra text. No markdown code block. Just the JSON array."""
+
+    try:
+        import json
+        resp = client.query(prompt)
+        text = resp.answer if hasattr(resp, "answer") else resp.text
+        # Strip markdown fences if present
+        text = text.strip()
+        if text.startswith("```"):
+            text = "\n".join(text.split("\n")[1:])
+        if text.endswith("```"):
+            text = "\n".join(text.split("\n")[:-1])
+        recs = json.loads(text.strip())
+        # Validate evidence IDs
+        valid_ids = {e["id"] for e in evidence}
+        for r in recs:
+            r["evidence_ids"] = [eid for eid in r.get("evidence_ids", []) if eid in valid_ids]
+        return recs[:5]
+    except Exception:
+        # Rule-based fallback
+        return _rule_based_recommendations(evidence)
+
+
+def _rule_based_recommendations(evidence: List[Dict]) -> List[Dict[str, Any]]:
+    """Generates deterministic rule-based recommendations as fallback."""
+    recs = []
+    seen_cats: set = set()
+    priority_map = {"high": "HIGH", "medium": "MEDIUM", "low": "LOW"}
+
+    for e in evidence:
+        cat = e["category"]
+        if cat in seen_cats:
+            continue
+        seen_cats.add(cat)
+        p = priority_map.get(e["severity"], "MEDIUM")
+
+        if cat == "mention_gap":
+            recs.append({
+                "priority": p,
+                "title": "Boost organic AI mentions with intent-matching content",
+                "recommendation": "Create dedicated comparison and best-of pages that directly answer the lost queries. Structure each page with a TL;DR answer at the top.",
+                "evidence_ids": [e["id"]],
+                "impact": "Increase mention rate by appearing in direct-answer sections of AI responses.",
+            })
+        elif cat == "citation_gap":
+            recs.append({
+                "priority": p,
+                "title": "Unlock AI source citations by opening crawler access",
+                "recommendation": "Add GPTBot, PerplexityBot, and ClaudeBot to robots.txt. Add FAQPage JSON-LD and verified statistics that AI models can quote.",
+                "evidence_ids": [e["id"]],
+                "impact": "Make the brand domain citable as a source URL in AI answers.",
+            })
+        elif cat == "geo_factor":
+            recs.append({
+                "priority": p,
+                "title": "Fix on-page GEO factor",
+                "recommendation": e["finding"],
+                "evidence_ids": [e["id"]],
+                "impact": "Improve GEO score and AI readability of the page.",
+            })
+        elif cat == "citation_source_gap":
+            recs.append({
+                "priority": p,
+                "title": f"Get listed on {e.get('domain', 'key third-party platform')}",
+                "recommendation": e.get("action", f"Claim a profile on {e.get('domain', 'this platform')} — AI cites it when recommending competitors."),
+                "evidence_ids": [e["id"]],
+                "impact": "Appear in the sources AI uses when making recommendations.",
+            })
+        if len(recs) >= 5:
+            break
+
+    return recs
+
+
+@router.post("/advisor/evidence")
+def evidence_advisor_endpoint(req: EvidenceAdvisorRequest):
+    """
+    Module 5: Evidence-Grounded AI Advisor.
+    Runs a full audit pipeline and returns recommendations each linked
+    to specific measured evidence items (E-codes).
+    """
+    try:
+        client = get_llm_client(req.provider)
+
+        # 1. Query cluster audit
+        summary = QueryService.audit_cluster(
+            seed_query=req.query,
+            target_brand_url=req.brand_url,
+            competitors=req.competitors,
+            auto_discover_competitors=req.auto_discover_competitors,
+            client=client,
+        )
+
+        # 2. On-page audit (optional)
+        comp_audit_dict = None
+        if req.on_page_target:
+            try:
+                comp_audit = CrawlerService.compare_with_competitors(req.on_page_target, req.competitors)
+                comp_audit_dict = comp_audit.to_dict()
+            except Exception:
+                pass
+
+        # 3. Citation gap
+        competitor_urls = list(summary.competitor_mentions.keys()) if summary.competitor_mentions else []
+        if req.competitors:
+            competitor_urls = req.competitors + competitor_urls
+
+        gap_report = CitationGapService.analyse(
+            cluster_results=[r.to_dict() for r in summary.results],
+            target_brand_url=req.brand_url,
+            competitor_urls=competitor_urls,
+        )
+        gap_dict = gap_report.to_dict()
+
+        # 4. Build evidence list
+        evidence = _build_evidence_list(summary, comp_audit_dict, gap_dict)
+
+        # 5. Generate recommendations
+        recommendations = _generate_advisor_recommendations(evidence, client, req.provider)
+
+        return {
+            "brand_url": req.brand_url,
+            "query": req.query,
+            "evidence": evidence,
+            "recommendations": recommendations,
+            "cluster_summary": summary.to_dict(),
+            "gap_report": gap_dict,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

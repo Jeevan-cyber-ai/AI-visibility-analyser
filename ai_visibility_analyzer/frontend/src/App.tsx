@@ -3,6 +3,9 @@ import { Navbar } from './components/Navbar';
 import type { NavTab } from './components/Navbar';
 import { CrawlerView } from './views/CrawlerView';
 import { ClusterAuditView } from './views/ClusterAuditView';
+import { WhereToListedView } from './views/WhereToListedView';
+import { AdvisorView } from './views/AdvisorView';
+import { ContentStudioView } from './views/ContentStudioView';
 import { CompetitorsView } from './views/CompetitorsView';
 import { ExperimentView } from './views/ExperimentView';
 import { OverviewView } from './views/OverviewView';
@@ -11,6 +14,9 @@ import { fetchHealth } from './services/api';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('crawler');
+  const [studioQuery, setStudioQuery] = useState<string>(
+    'Compare the leading collaborative workspace options for a small team'
+  );
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
   useEffect(() => {
@@ -19,6 +25,11 @@ export function App() {
       .then(setHealth)
       .catch((err) => console.warn('Backend not responding yet:', err));
   }, []);
+
+  const handleNavigateToStudio = (query: string) => {
+    setStudioQuery(query);
+    setActiveTab('studio');
+  };
 
   return (
     <div className="app-container">
@@ -33,6 +44,19 @@ export function App() {
       <main className="main-content">
         {activeTab === 'crawler' && <CrawlerView />}
         {activeTab === 'cluster' && <ClusterAuditView />}
+        {activeTab === 'listings' && (
+          <WhereToListedView onNavigateToStudio={handleNavigateToStudio} />
+        )}
+        {activeTab === 'advisor' && (
+          <AdvisorView onNavigateToStudio={handleNavigateToStudio} />
+        )}
+        {activeTab === 'studio' && (
+          <ContentStudioView
+            key={studioQuery}
+            initialQuery={studioQuery}
+            onNavigateToCrawler={() => setActiveTab('crawler')}
+          />
+        )}
         {activeTab === 'competitors' && (
           <CompetitorsView
             onSelectForCrawler={(_url) => {

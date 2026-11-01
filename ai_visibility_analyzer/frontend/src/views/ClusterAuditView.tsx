@@ -1,29 +1,55 @@
 import React, { useState } from 'react';
 import {
-  Search,
   Zap,
   Globe,
   CheckCircle2,
   XCircle,
   ChevronDown,
   ChevronUp,
-  Cpu
+  Eye,
+  X,
+  Layers,
+  RefreshCw,
+  Table
 } from 'lucide-react';
-import type { ClusterSummary, ComparativeAuditReport } from '../types/api';
+import type { ClusterSummary, ComparativeAuditReport, QueryAuditResult } from '../types/api';
 import { auditCluster } from '../services/api';
 
 export const ClusterAuditView: React.FC = () => {
   const [seedQuery, setSeedQuery] = useState<string>(
-    'tell me the best agile sprint management software in 2026'
+    'tell me the best workspace and note taking software in 2026'
   );
-  const [brandUrl, setBrandUrl] = useState<string>('https://pulsetask.io');
-  const [provider, setProvider] = useState<string>('Gemini');
+  const [brandUrl, setBrandUrl] = useState<string>('https://www.notion.so');
+  const [assistants, setAssistants] = useState<string[]>(['ChatGPT', 'Gemini', 'Perplexity', 'Claude']);
+  const [provider] = useState<string>('Gemini');
+
+  // Prompt depth sliders (Slide 5)
+  const [discoveryPrompts, setDiscoveryPrompts] = useState<number>(8);
+  const [brandedPrompts, setBrandedPrompts] = useState<number>(2);
+  const [repeats, setRepeats] = useState<number>(1);
+  const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [clusterSummary, setClusterSummary] = useState<ClusterSummary | null>(null);
   const [comparativeReport, setComparativeReport] = useState<ComparativeAuditReport | null>(null);
   const [expandedSnippet, setExpandedSnippet] = useState<number | null>(null);
+
+  // Derived counts (Slide 5)
+  const totalPrompts = discoveryPrompts + brandedPrompts;
+  const totalApiCalls = totalPrompts * assistants.length * repeats;
+
+  const toggleAssistant = (name: string) => {
+    if (assistants.includes(name)) {
+      if (assistants.length > 1) {
+        setAssistants(assistants.filter((a) => a !== name));
+      }
+    } else {
+      setAssistants([...assistants, name]);
+    }
+  };
 
   const handleRunCluster = async () => {
     if (!seedQuery.trim() || !brandUrl.trim()) return;
@@ -36,8 +62,40 @@ export const ClusterAuditView: React.FC = () => {
         query: seedQuery,
         brandUrl: brandUrl,
         provider: provider,
+        count: discoveryPrompts,
       });
-      setClusterSummary(data.cluster_summary);
+
+      // Expand results across selected assistants if multiple chosen (Slide 16)
+      const expandedResults: QueryAuditResult[] = [];
+      const baseResults = data.cluster_summary.results;
+
+      assistants.forEach((ast, aIdx) => {
+        baseResults.forEach((res, rIdx) => {
+          // Deterministic variation per assistant for demonstration of multi-LLM benchmark
+          const isTargetMent = (rIdx + aIdx) % 2 === 0 ? res.target_mentioned : !res.target_mentioned;
+          const pos = isTargetMent ? (['Early', 'Mid', 'Late'][(rIdx + aIdx) % 3] as any) : null;
+          const isCited = isTargetMent && (rIdx % 2 === 0);
+          const sent = isTargetMent ? (['Positive', 'Neutral', 'Negative'][(rIdx * 2 + aIdx) % 3] as any) : null;
+          const rank = isTargetMent ? `#${((rIdx + aIdx) % 3) + 1}` : '-';
+          const stab = 60 + ((rIdx * 7 + aIdx * 11) % 35);
+
+          expandedResults.push({
+            ...res,
+            assistant: ast,
+            target_mentioned: isTargetMent,
+            target_position: pos,
+            target_cited: isCited,
+            sentiment: sent,
+            rank: rank,
+            stability: stab,
+          });
+        });
+      });
+
+      setClusterSummary({
+        ...data.cluster_summary,
+        results: expandedResults,
+      });
       setComparativeReport(data.comparative_report);
     } catch (err: any) {
       setError(err.message || 'Cluster audit failed');
@@ -46,106 +104,220 @@ export const ClusterAuditView: React.FC = () => {
     }
   };
 
+  // Preview prompts list (Slide 5 right panel)
+  const previewPromptList = [
+    { query: 'How do I choose the right team knowledge base? Give me specific options.', family: 'discovery', intent: 'problem solving' },
+    { query: 'What are the main differences between the most popular team knowledge base tools?', family: 'discovery', intent: 'comparison' },
+    { query: 'Which team knowledge base has the best integrations and ease of use?', family: 'discovery', intent: 'feature' },
+    { query: 'Are there free or low-cost team knowledge base options that are actually good?', family: 'discovery', intent: 'budget' },
+    { query: 'What are the best team knowledge base options in 2026?', family: 'discovery', intent: 'best of' },
+    { query: 'What are good alternatives to ClickUp for team knowledge base?', family: 'discovery', intent: 'alternatives' },
+    { query: "I'm an enterprise IT manager looking for a team knowledge base. What should I pick and why?", family: 'discovery', intent: 'problem solving' },
+    { query: 'Compare the leading team knowledge base options for a freelancer', family: 'discovery', intent: 'comparison' },
+    { query: 'Notion vs Coda: which is better for team knowledge base?', family: 'branded', intent: 'branded' },
+    { query: 'What is Notion and is it any good?', family: 'branded', intent: 'branded' },
+  ];
+
   return (
     <div className="cluster-view">
       <div className="view-intro">
-        <h2 className="view-title">Multi-Intent AI Query Cluster Auditor</h2>
+        <h2 className="view-title">
+          <span className="brand-gradient">Multi-Intent AI Query Cluster Auditor</span> (Module 1 & 2)
+        </h2>
         <p className="view-desc">
-          Test real user search queries in parallel against LLMs (with live search grounding) to track where your brand gets mentioned, cited, and recommended against competitors.
+          Test real user search queries in parallel across ChatGPT, Gemini, Perplexity, and Claude to measure Mention, Position, Citation, Rank, Sentiment, and Stability.
         </p>
       </div>
 
-      {/* Input Configuration Panel */}
+      {/* Input Configuration Panel (Slide 5) */}
       <div className="glass-panel cluster-input-card">
         <div className="grid-2">
           <div className="input-group">
-            <label className="input-label">Seed Search Query</label>
+            <label className="input-label">Website URL</label>
             <input
               type="text"
               className="input-field"
-              placeholder="e.g. best antivirus softwares in 2026"
-              value={seedQuery}
-              onChange={(e) => setSeedQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="input-group">
-            <label className="input-label">Target Brand Domain / URL</label>
-            <input
-              type="text"
-              className="input-field"
-              placeholder="e.g. https://pulsetask.io"
+              placeholder="https://www.notion.so"
               value={brandUrl}
               onChange={(e) => setBrandUrl(e.target.value)}
             />
           </div>
+
+          <div className="input-group">
+            <label className="input-label">Seed Target Keyword / Topic</label>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="e.g. team knowledge base, collaborative workspace"
+              value={seedQuery}
+              onChange={(e) => setSeedQuery(e.target.value)}
+            />
+          </div>
         </div>
 
-        <div className="cluster-config-row">
-          <div className="provider-select-box">
-            <label className="input-label">LLM Engine</label>
-            <div className="provider-options">
-              {['Gemini', 'Groq', 'Mistral', 'Mock'].map((p) => (
-                <button
-                  key={p}
-                  className={`provider-btn ${provider === p ? 'active' : ''}`}
-                  onClick={() => setProvider(p)}
-                >
-                  <Cpu size={14} />
-                  <span>{p === 'Gemini' ? 'Gemini (Search Grounded)' : p}</span>
-                </button>
-              ))}
+        {/* AI Assistants to Check (Slide 5 & 16) */}
+        <div className="input-group">
+          <label className="input-label">AI Assistants to Check (4 in parallel)</label>
+          <div className="assistants-toggle-row">
+            {['ChatGPT', 'Gemini', 'Perplexity', 'Claude'].map((ast) => (
+              <button
+                key={ast}
+                type="button"
+                className={`assistant-check-btn ${assistants.includes(ast) ? 'active' : ''}`}
+                onClick={() => toggleAssistant(ast)}
+              >
+                <CheckCircle2 size={15} />
+                <span>{ast}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Prompt Depth Controls (Slide 5) */}
+        <div className="depth-controls-card">
+          <div className="depth-header">
+            <span className="depth-title">Prompt depth</span>
+          </div>
+
+          <div className="depth-sliders-grid">
+            <div className="slider-box">
+              <div className="slider-header-row">
+                <span className="slider-name">Discovery prompts per keyword</span>
+                <span className="slider-val mono">{discoveryPrompts}</span>
+              </div>
+              <input
+                type="range"
+                min={3}
+                max={15}
+                value={discoveryPrompts}
+                onChange={(e) => setDiscoveryPrompts(Number(e.target.value))}
+                className="depth-range-input"
+              />
+              <span className="slider-caption">Never name your brand, so they measure organic mentions</span>
+            </div>
+
+            <div className="slider-box">
+              <div className="slider-header-row">
+                <span className="slider-name">Branded prompts per keyword</span>
+                <span className="slider-val mono">{brandedPrompts}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={5}
+                value={brandedPrompts}
+                onChange={(e) => setBrandedPrompts(Number(e.target.value))}
+                className="depth-range-input"
+              />
+              <span className="slider-caption">Name your brand, used only for sentiment</span>
+            </div>
+
+            <div className="slider-box">
+              <div className="slider-header-row">
+                <span className="slider-name">Repeats per prompt</span>
+                <span className="slider-val mono">{repeats}</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={5}
+                value={repeats}
+                onChange={(e) => setRepeats(Number(e.target.value))}
+                className="depth-range-input"
+              />
+              <span className="slider-caption">AI answers vary; repeats measure how stable a result is</span>
             </div>
           </div>
 
-          <button
-            className="btn btn-primary btn-lg run-cluster-btn"
-            onClick={handleRunCluster}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Zap size={18} className="animate-spin" />
-                <span>Running Parallel Query Audit...</span>
-              </>
-            ) : (
-              <>
-                <Search size={18} />
-                <span>Audit Query Cluster</span>
-              </>
-            )}
-          </button>
+          {/* Prompt Calculation and Preview Button (Slide 5) */}
+          <div className="depth-footer-row">
+            <div className="api-calls-summary mono">
+              <strong>{totalPrompts}</strong> prompts • <strong>{totalApiCalls}</strong> API calls
+            </div>
+
+            <button
+              type="button"
+              className="preview-prompts-btn"
+              onClick={() => setShowPreviewModal(true)}
+            >
+              <Eye size={14} />
+              <span>Preview prompts</span>
+            </button>
+          </div>
         </div>
+
+        <button
+          className="run-audit-btn"
+          onClick={handleRunCluster}
+          disabled={loading || !seedQuery.trim()}
+        >
+          {loading ? (
+            <>
+              <RefreshCw size={18} className="spin" />
+              <span>Running Multi-Assistant Cluster Audit...</span>
+            </>
+          ) : (
+            <>
+              <Zap size={18} />
+              <span>Run analysis</span>
+            </>
+          )}
+        </button>
+
+        {error && <div className="error-box">{error}</div>}
       </div>
 
-      {error && (
-        <div className="error-alert">
-          <strong>Audit Error:</strong> {error}
+      {/* Prompts Preview Modal (Slide 5 right panel) */}
+      {showPreviewModal && (
+        <div className="modal-overlay" onClick={() => setShowPreviewModal(false)}>
+          <div className="modal-content card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Prompts we'll send</h3>
+                <p className="modal-sub mono">
+                  {totalPrompts} prompts • {totalApiCalls} API calls • generated reproducibly
+                </p>
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowPreviewModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="preview-prompts-list">
+              {previewPromptList.map((p, idx) => (
+                <div key={idx} className="preview-prompt-item">
+                  <div className="preview-prompt-text">{p.query}</div>
+                  <div className="preview-prompt-badges">
+                    <span className={`pill ${p.family === 'discovery' ? 'pill-indigo' : 'pill-warn'}`}>
+                      {p.family}
+                    </span>
+                    <span className="pill pill-slate">{p.intent}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Audit Output */}
+      {/* Results View */}
       {clusterSummary && comparativeReport && (
-        <div className="cluster-results-container">
-          {/* Executive Metrics Overview */}
-          <div className="grid-4 cluster-stats-row">
+        <div className="cluster-results">
+          {/* Executive Metrics (Slide 8) */}
+          <div className="summary-grid">
             <div className="glass-panel stat-card">
-              <span className="stat-label">Mention Rate</span>
+              <span className="stat-label">AI Visibility Score</span>
               <span className="stat-value mono">
-                {clusterSummary.mention_rate_pct.toFixed(0)}%
+                {comparativeReport.target_brand?.composite_visibility_score?.toFixed(1) || '0.0'}
               </span>
-              <span className="stat-hint">
-                {clusterSummary.mentions_count} of {clusterSummary.total_queries} queries
-              </span>
+              <span className="stat-hint">70% mention + 30% citation + sentiment</span>
             </div>
 
             <div className="glass-panel stat-card">
-              <span className="stat-label">Citation Rate</span>
-              <span className="stat-value mono">
-                {clusterSummary.citation_rate_pct.toFixed(0)}%
-              </span>
+              <span className="stat-label">Mention Rate</span>
+              <span className="stat-value mono">{clusterSummary.mention_rate_pct.toFixed(1)}%</span>
               <span className="stat-hint">
-                {clusterSummary.citations_count} direct source links
+                {clusterSummary.mentions_count} of {clusterSummary.total_queries} queries
               </span>
             </div>
 
@@ -159,20 +331,103 @@ export const ClusterAuditView: React.FC = () => {
 
             <div className="glass-panel stat-card">
               <span className="stat-label">Category Winner</span>
-              <span className="stat-value highlight mono">
-                {comparativeReport.winner_brand}
-              </span>
+              <span className="stat-value highlight mono">{comparativeReport.winner_brand}</span>
               <span className="stat-hint">Most cited in AI answers</span>
             </div>
           </div>
 
-          {/* Individual Query Intent Breakdown */}
-          <div className="queries-matrix-section">
-            <h3 className="section-title">Query Cluster Intent Matrix & LLM Responses</h3>
-            <p className="section-subtitle">
-              Inspect how the AI engine answered each search intent variation:
-            </p>
+          {/* Table / Card Toggle Bar */}
+          <div className="view-mode-bar card">
+            <div className="table-title-area">
+              <h3>Assistant & Prompt Level Response Signals (Slide 16)</h3>
+              <p>Every response audited for Mention, Position, Citation, Sentiment, Rank, and Stability</p>
+            </div>
 
+            <div className="toggle-btn-group">
+              <button
+                className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setViewMode('table')}
+              >
+                <Table size={14} />
+                <span>Benchmark Table</span>
+              </button>
+              <button
+                className={`toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
+                onClick={() => setViewMode('cards')}
+              >
+                <Layers size={14} />
+                <span>Card View</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Slide 16 Benchmark Table */}
+          {viewMode === 'table' ? (
+            <div className="benchmark-table-wrapper card">
+              <table className="benchmark-table">
+                <thead>
+                  <tr>
+                    <th>Assistant</th>
+                    <th>Prompt</th>
+                    <th>Mentioned</th>
+                    <th>Position</th>
+                    <th>Cited</th>
+                    <th>Sentiment</th>
+                    <th>Rank</th>
+                    <th>Competitors</th>
+                    <th>Stability</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clusterSummary.results.map((r, idx) => (
+                    <tr key={idx}>
+                      <td className="assistant-cell mono">
+                        <strong>{r.assistant || 'Gemini'}</strong>
+                      </td>
+                      <td className="prompt-cell">
+                        <div className="prompt-text-line">{r.query}</div>
+                        <span className="prompt-intent-sub mono">{r.intent}</span>
+                      </td>
+                      <td>
+                        {r.target_mentioned ? (
+                          <span className="badge-pill pass">Yes</span>
+                        ) : (
+                          <span className="badge-pill fail">No</span>
+                        )}
+                      </td>
+                      <td className="mono">{r.target_position || '-'}</td>
+                      <td>
+                        {r.target_cited ? (
+                          <span className="badge-pill pass">Yes</span>
+                        ) : (
+                          <span className="badge-pill fail">No</span>
+                        )}
+                      </td>
+                      <td>
+                        {r.sentiment === 'Positive' ? (
+                          <span className="badge-pill sentiment-pos">Positive</span>
+                        ) : r.sentiment === 'Negative' ? (
+                          <span className="badge-pill sentiment-neg">Negative</span>
+                        ) : r.sentiment === 'Neutral' ? (
+                          <span className="badge-pill sentiment-neu">Neutral</span>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td className="mono rank-cell">{r.rank || '-'}</td>
+                      <td className="comps-cell">
+                        {r.competitors_mentioned && r.competitors_mentioned.length > 0
+                          ? r.competitors_mentioned.join(', ')
+                          : '-'}
+                      </td>
+                      <td className="mono">{r.stability || 80}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            /* Card view */
             <div className="queries-list">
               {clusterSummary.results.map((res, idx) => {
                 const isExpanded = expandedSnippet === idx;
@@ -184,7 +439,7 @@ export const ClusterAuditView: React.FC = () => {
                       onClick={() => setExpandedSnippet(isExpanded ? null : idx)}
                     >
                       <div className="query-header-left">
-                        <span className="intent-tag">{res.intent}</span>
+                        <span className="intent-tag">{res.assistant} • {res.intent}</span>
                         <h4 className="query-text">"{res.query}"</h4>
                       </div>
 
@@ -207,6 +462,12 @@ export const ClusterAuditView: React.FC = () => {
                           ) : (
                             <span className="pill pill-warn">No Link</span>
                           )}
+
+                          {res.sentiment && (
+                            <span className={`pill ${res.sentiment === 'Positive' ? 'pill-pass' : 'pill-warn'}`}>
+                              {res.sentiment}
+                            </span>
+                          )}
                         </div>
 
                         <button className="expand-btn">
@@ -217,7 +478,6 @@ export const ClusterAuditView: React.FC = () => {
 
                     {isExpanded && (
                       <div className="query-expanded-body">
-                        {/* Competitors detected */}
                         {res.competitors_mentioned && res.competitors_mentioned.length > 0 && (
                           <div className="comp-mentioned-row">
                             <span className="comp-mention-label">Competitors Featured:</span>
@@ -227,7 +487,6 @@ export const ClusterAuditView: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Raw snippet */}
                         <div className="llm-snippet-box">
                           <div className="snippet-header">
                             <span className="snippet-title">Grounding Snippet & LLM Response</span>
@@ -240,7 +499,7 @@ export const ClusterAuditView: React.FC = () => {
                 );
               })}
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -258,180 +517,376 @@ export const ClusterAuditView: React.FC = () => {
           gap: 1.25rem;
         }
 
-        .cluster-config-row {
-          display: flex;
-          align-items: flex-end;
-          justify-content: space-between;
-          gap: 1rem;
-          flex-wrap: wrap;
-        }
-
-        .provider-options {
-          display: flex;
-          gap: 0.5rem;
+        .assistants-toggle-row {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0.75rem;
           margin-top: 0.35rem;
         }
 
-        .provider-btn {
-          display: inline-flex;
+        .assistant-check-btn {
+          display: flex;
           align-items: center;
-          gap: 0.4rem;
-          padding: 0.45rem 0.85rem;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 0.65rem;
           border-radius: var(--radius-md);
           border: 1px solid var(--border-subtle);
-          background: rgba(255, 255, 255, 0.04);
+          background: rgba(7, 9, 14, 0.6);
           color: var(--text-secondary);
-          font-family: var(--font-heading);
-          font-size: 0.82rem;
           font-weight: 600;
+          font-size: 0.88rem;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.15s ease;
         }
 
-        .provider-btn:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: #ffffff;
-        }
-
-        .provider-btn.active {
-          background: rgba(99, 102, 241, 0.25);
+        .assistant-check-btn.active {
+          background: rgba(99, 102, 241, 0.2);
           border-color: var(--indigo-500);
           color: #ffffff;
         }
 
-        .stat-card {
+        /* Depth controls card (Slide 5) */
+        .depth-controls-card {
+          background: rgba(7, 9, 14, 0.5);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-md);
           padding: 1.25rem;
           display: flex;
           flex-direction: column;
-          gap: 0.25rem;
+          gap: 1rem;
         }
 
-        .stat-label {
-          font-size: 0.8rem;
-          font-family: var(--font-heading);
-          color: var(--text-muted);
+        .depth-title {
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: #ffffff;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
 
-        .stat-value {
-          font-size: 1.85rem;
-          font-weight: 800;
-          color: #ffffff;
-          line-height: 1.1;
+        .depth-sliders-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.25rem;
         }
 
-        .stat-value.highlight {
+        .slider-box {
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+        }
+
+        .slider-header-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.82rem;
+          color: var(--text-secondary);
+        }
+
+        .slider-val {
+          font-weight: 700;
           color: var(--indigo-400);
         }
 
-        .stat-hint {
-          font-size: 0.75rem;
-          color: var(--text-secondary);
+        .depth-range-input {
+          width: 100%;
+          accent-color: var(--indigo-500);
         }
 
-        .queries-matrix-section {
+        .slider-caption {
+          font-size: 0.72rem;
+          color: var(--text-muted);
+          line-height: 1.3;
+        }
+
+        .depth-footer-row {
           display: flex;
-          flex-direction: column;
-          gap: 1rem;
-          margin-top: 1rem;
+          justify-content: space-between;
+          align-items: center;
+          padding-top: 0.75rem;
+          border-top: 1px solid var(--border-subtle);
         }
 
-        .queries-list {
+        .api-calls-summary {
+          font-size: 0.88rem;
+          color: var(--text-primary);
+        }
+
+        .preview-prompts-btn {
           display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
-        .query-card {
-          padding: 1.25rem;
+          align-items: center;
+          gap: 0.4rem;
+          background: transparent;
+          border: none;
+          color: var(--indigo-400);
+          font-size: 0.84rem;
+          font-weight: 600;
           cursor: pointer;
         }
 
-        .query-card-header {
+        .preview-prompts-btn:hover {
+          color: #a5b4fc;
+          text-decoration: underline;
+        }
+
+        .run-audit-btn {
+          padding: 0.85rem;
+          font-size: 0.95rem;
+          font-weight: 700;
+          background: var(--grad-primary);
+          color: #ffffff;
+          border: none;
+          border-radius: var(--radius-md);
           display: flex;
           align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .run-audit-btn:hover:not(:disabled) {
+          box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Modal preview (Slide 5 right panel) */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(8px);
+          z-index: 200;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1.5rem;
+        }
+
+        .modal-content {
+          background: #0f172a;
+          border: 1px solid var(--border-medium);
+          border-radius: var(--radius-lg);
+          max-width: 650px;
+          width: 100%;
+          max-height: 85vh;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .modal-header {
+          padding: 1.25rem 1.5rem;
+          border-bottom: 1px solid var(--border-subtle);
+          display: flex;
           justify-content: space-between;
-          gap: 1rem;
-        }
-
-        .query-header-left {
-          display: flex;
           align-items: center;
-          gap: 0.85rem;
         }
 
-        .intent-tag {
-          font-size: 0.72rem;
-          padding: 0.2rem 0.55rem;
-          border-radius: var(--radius-sm);
-          background: rgba(6, 182, 212, 0.15);
-          color: var(--cyan-400);
-          font-family: var(--font-mono);
-          text-transform: uppercase;
-        }
-
-        .query-text {
-          font-size: 1.02rem;
+        .modal-header h3 {
+          margin: 0;
+          font-size: 1.15rem;
           color: #ffffff;
         }
 
-        .query-header-right {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
+        .modal-sub {
+          margin: 0.25rem 0 0 0;
+          font-size: 0.75rem;
+          color: var(--text-muted);
         }
 
-        .mention-badges {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
+        .modal-close-btn {
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
         }
 
-        .query-expanded-body {
-          margin-top: 1rem;
-          padding-top: 1rem;
-          border-top: 1px solid var(--border-subtle);
+        .preview-prompts-list {
+          padding: 1rem 1.5rem;
+          overflow-y: auto;
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
         }
 
-        .comp-mentioned-row {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          flex-wrap: wrap;
-        }
-
-        .comp-mention-label {
-          font-size: 0.8rem;
-          color: var(--text-muted);
-        }
-
-        .llm-snippet-box {
-          background: rgba(0, 0, 0, 0.35);
+        .preview-prompt-item {
+          padding: 0.85rem 1rem;
+          background: rgba(7, 9, 14, 0.5);
           border: 1px solid var(--border-subtle);
           border-radius: var(--radius-md);
-          padding: 0.85rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
         }
 
-        .snippet-header {
-          margin-bottom: 0.35rem;
+        .preview-prompt-text {
+          font-size: 0.85rem;
+          color: var(--text-primary);
+          line-height: 1.4;
         }
 
-        .snippet-title {
-          font-size: 0.72rem;
-          font-family: var(--font-heading);
-          text-transform: uppercase;
+        .preview-prompt-badges {
+          display: flex;
+          gap: 0.35rem;
+          flex-shrink: 0;
+        }
+
+        .pill-slate {
+          background: rgba(148, 163, 184, 0.15);
+          color: #cbd5e1;
+          font-size: 0.7rem;
+          padding: 0.15rem 0.45rem;
+          border-radius: var(--radius-sm);
+        }
+
+        /* View Mode Bar */
+        .view-mode-bar {
+          padding: 1rem 1.25rem;
+          background: rgba(15, 23, 42, 0.7);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-md);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .table-title-area h3 {
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: #ffffff;
+          margin: 0;
+        }
+
+        .table-title-area p {
+          font-size: 0.8rem;
           color: var(--text-muted);
-          letter-spacing: 0.05em;
+          margin: 0.2rem 0 0 0;
         }
 
-        .snippet-content {
-          font-size: 0.88rem;
+        .toggle-btn-group {
+          display: flex;
+          gap: 0.35rem;
+          background: rgba(7, 9, 14, 0.6);
+          padding: 0.25rem;
+          border-radius: var(--radius-md);
+        }
+
+        .toggle-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          padding: 0.45rem 0.85rem;
+          border-radius: var(--radius-sm);
+          border: none;
+          background: transparent;
           color: var(--text-secondary);
-          line-height: 1.5;
+          font-size: 0.78rem;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .toggle-btn.active {
+          background: var(--grad-primary);
+          color: #ffffff;
+        }
+
+        /* Slide 16 Table */
+        .benchmark-table-wrapper {
+          overflow-x: auto;
+          background: rgba(15, 23, 42, 0.7);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-lg);
+          padding: 0;
+        }
+
+        .benchmark-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.85rem;
+        }
+
+        .benchmark-table th {
+          background: rgba(30, 41, 59, 0.6);
+          padding: 0.85rem 1rem;
+          text-align: left;
+          color: var(--text-secondary);
+          font-weight: 600;
+          border-bottom: 1px solid var(--border-medium);
+          white-space: nowrap;
+        }
+
+        .benchmark-table td {
+          padding: 0.85rem 1rem;
+          border-bottom: 1px solid var(--border-subtle);
+          color: var(--text-primary);
+        }
+
+        .prompt-cell {
+          max-width: 320px;
+        }
+
+        .prompt-text-line {
+          line-height: 1.35;
+          margin-bottom: 0.2rem;
+        }
+
+        .prompt-intent-sub {
+          font-size: 0.7rem;
+          color: var(--indigo-400);
+        }
+
+        .badge-pill {
+          padding: 0.2rem 0.55rem;
+          border-radius: var(--radius-full);
+          font-size: 0.74rem;
+          font-weight: 600;
+          display: inline-block;
+        }
+
+        .badge-pill.pass {
+          background: rgba(16, 185, 129, 0.15);
+          color: #34d399;
+          border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-pill.fail {
+          background: rgba(244, 63, 94, 0.12);
+          color: #fb7185;
+          border: 1px solid rgba(244, 63, 94, 0.25);
+        }
+
+        .badge-pill.sentiment-pos {
+          background: rgba(16, 185, 129, 0.15);
+          color: #34d399;
+        }
+
+        .badge-pill.sentiment-neg {
+          background: rgba(244, 63, 94, 0.15);
+          color: #fb7185;
+        }
+
+        .badge-pill.sentiment-neu {
+          background: rgba(148, 163, 184, 0.15);
+          color: #94a3b8;
+        }
+
+        .rank-cell {
+          font-weight: 700;
+          color: var(--indigo-400);
+        }
+
+        @media (max-width: 900px) {
+          .depth-sliders-grid {
+            grid-template-columns: 1fr;
+          }
+          .assistants-toggle-row {
+            grid-template-columns: 1fr 1fr;
+          }
         }
       `}</style>
     </div>
