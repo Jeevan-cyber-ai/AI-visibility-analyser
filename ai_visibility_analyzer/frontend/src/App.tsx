@@ -13,7 +13,7 @@ import type { HealthResponse } from './types/api';
 import { fetchHealth } from './services/api';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<NavTab>('crawler');
+  const [activeTab, setActiveTab] = useState<NavTab>('overview');
   const [studioQuery, setStudioQuery] = useState<string>(
     'Compare the leading collaborative workspace options for a small team'
   );

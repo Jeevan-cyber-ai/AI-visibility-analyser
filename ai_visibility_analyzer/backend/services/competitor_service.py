@@ -76,23 +76,102 @@ Example:
     @staticmethod
     def _fallback_competitors(topic: str, limit: int) -> List[CompetitorInfo]:
         t_lower = topic.lower()
-        if any(w in t_lower for w in ["antivirus", "security", "bitdefender"]):
+        if any(w in t_lower for w in ["antivirus", "security", "bitdefender", "cyber"]):
             presets = [
                 ("Norton", "norton.com", "https://norton.com"),
                 ("McAfee", "mcafee.com", "https://mcafee.com"),
+                ("CrowdStrike", "crowdstrike.com", "https://crowdstrike.com"),
                 ("Malwarebytes", "malwarebytes.com", "https://malwarebytes.com"),
-                ("Avast", "avast.com", "https://avast.com"),
+                ("Palo Alto Networks", "paloaltonetworks.com", "https://paloaltonetworks.com"),
             ]
-        elif any(w in t_lower for w in ["linear", "agile", "project", "jira"]):
+        elif any(w in t_lower for w in ["crm", "sales", "hubspot", "salesforce"]):
             presets = [
+                ("Salesforce", "salesforce.com", "https://salesforce.com"),
+                ("HubSpot", "hubspot.com", "https://hubspot.com"),
+                ("Zoho CRM", "zoho.com", "https://zoho.com/crm"),
+                ("Pipedrive", "pipedrive.com", "https://pipedrive.com"),
+            ]
+        elif any(w in t_lower for w in ["ecommerce", "shop", "shopify", "store"]):
+            presets = [
+                ("Shopify", "shopify.com", "https://shopify.com"),
+                ("WooCommerce", "woocommerce.com", "https://woocommerce.com"),
+                ("BigCommerce", "bigcommerce.com", "https://bigcommerce.com"),
+                ("Magento", "adobe.com", "https://business.adobe.com/products/magento/magento-commerce.html"),
+            ]
+        elif any(w in t_lower for w in ["email", "newsletter", "mailchimp"]):
+            presets = [
+                ("Mailchimp", "mailchimp.com", "https://mailchimp.com"),
+                ("Klaviyo", "klaviyo.com", "https://klaviyo.com"),
+                ("Brevo", "brevo.com", "https://brevo.com"),
+                ("ConvertKit", "convertkit.com", "https://convertkit.com"),
+            ]
+        elif any(w in t_lower for w in ["hr", "payroll", "gusto", "rippling"]):
+            presets = [
+                ("Gusto", "gusto.com", "https://gusto.com"),
+                ("Rippling", "rippling.com", "https://rippling.com"),
+                ("BambooHR", "bamboohr.com", "https://bamboohr.com"),
+                ("Deel", "deel.com", "https://deel.com"),
+            ]
+        elif any(w in t_lower for w in ["design", "ui", "ux", "figma"]):
+            presets = [
+                ("Figma", "figma.com", "https://figma.com"),
+                ("Canva", "canva.com", "https://canva.com"),
+                ("Adobe XD", "adobe.com", "https://adobe.com/products/xd.html"),
+                ("Sketch", "sketch.com", "https://sketch.com"),
+            ]
+        elif any(w in t_lower for w in ["accounting", "finance", "quickbooks", "invoice"]):
+            presets = [
+                ("QuickBooks", "intuit.com", "https://quickbooks.intuit.com"),
+                ("Xero", "xero.com", "https://xero.com"),
+                ("FreshBooks", "freshbooks.com", "https://freshbooks.com"),
+                ("Wave", "waveapps.com", "https://waveapps.com"),
+            ]
+        elif any(w in t_lower for w in ["support", "helpdesk", "zendesk", "intercom"]):
+            presets = [
+                ("Zendesk", "zendesk.com", "https://zendesk.com"),
+                ("Intercom", "intercom.com", "https://intercom.com"),
+                ("Freshdesk", "freshdesk.com", "https://freshdesk.com"),
+                ("Help Scout", "helpscout.com", "https://helpscout.com"),
+            ]
+        elif any(w in t_lower for w in ["ai writing", "copywriting", "copy.ai", "jasper"]):
+            presets = [
+                ("Jasper AI", "jasper.ai", "https://jasper.ai"),
+                ("Copy.ai", "copy.ai", "https://copy.ai"),
+                ("Grammarly", "grammarly.com", "https://grammarly.com"),
+                ("Writer", "writer.com", "https://writer.com"),
+            ]
+        elif any(w in t_lower for w in ["analytics", "mixpanel", "amplitude"]):
+            presets = [
+                ("Google Analytics", "analytics.google.com", "https://analytics.google.com"),
+                ("Mixpanel", "mixpanel.com", "https://mixpanel.com"),
+                ("Amplitude", "amplitude.com", "https://amplitude.com"),
+                ("PostHog", "posthog.com", "https://posthog.com"),
+            ]
+        elif any(w in t_lower for w in ["note", "docs", "wiki", "notion", "coda"]):
+            presets = [
+                ("Notion", "notion.so", "https://notion.so"),
+                ("Coda", "coda.io", "https://coda.io"),
+                ("Obsidian", "obsidian.md", "https://obsidian.md"),
+                ("Confluence", "atlassian.com", "https://atlassian.com/software/confluence"),
+            ]
+        elif any(w in t_lower for w in ["linear", "agile", "project", "jira", "sprint"]):
+            presets = [
+                ("Linear", "linear.app", "https://linear.app"),
                 ("ClickUp", "clickup.com", "https://clickup.com"),
                 ("Jira", "atlassian.com", "https://jira.atlassian.com"),
                 ("Asana", "asana.com", "https://asana.com"),
-                ("Monday.com", "monday.com", "https://monday.com"),
             ]
         else:
+            # Dynamically derive real-sounding competitor brands based on user's topic words
+            clean_words = [w.capitalize() for w in re.sub(r'[^a-zA-Z0-9\s]', '', topic).split() if len(w) > 2 and w.lower() not in {"best", "top", "software", "tools", "apps", "platform", "online", "free"}]
+            brand_stem = clean_words[0] if clean_words else "Market"
+            second_stem = clean_words[1] if len(clean_words) > 1 else "Tech"
+            slug1 = brand_stem.lower()
+            slug2 = f"{brand_stem.lower()}{second_stem.lower()}"
             presets = [
-                ("Competitor 1", "competitor1.com", "https://competitor1.com"),
-                ("Competitor 2", "competitor2.com", "https://competitor2.com"),
+                (f"{brand_stem} Pro", f"{slug1}pro.com", f"https://{slug1}pro.com"),
+                (f"{brand_stem} Cloud", f"{slug1}cloud.io", f"https://{slug1}cloud.io"),
+                (f"Apex {brand_stem}", f"apex{slug1}.com", f"https://apex{slug1}.com"),
+                (f"{second_stem} Leader", f"{second_stem.lower()}leader.com", f"https://{second_stem.lower()}leader.com"),
             ]
         return [CompetitorInfo(brand=b, domain=d, url=u) for b, d, u in presets[:limit]]

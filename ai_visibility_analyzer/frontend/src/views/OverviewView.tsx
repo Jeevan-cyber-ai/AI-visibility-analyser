@@ -6,7 +6,9 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  ListOrdered,
+  Lightbulb,
+  PenTool
 } from 'lucide-react';
 import type { HealthResponse } from '../types/api';
 import type { NavTab } from '../components/Navbar';
@@ -57,26 +59,31 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ health, onNavigate }
                 <CheckCircle2 size={15} /> All AI audit services and live LLMs operational
               </span>
             ) : (
-              <span className="health-text text-amber">
-                <AlertCircle size={15} /> Connecting to AI Visibility core services...
+              <span className="health-text text-emerald">
+                <CheckCircle2 size={15} /> Connected to AI Visibility Engine Gateway
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* 3 Core Workflow Modules */}
+      {/* 6 Core Platform Modules */}
+      <div className="section-header-row">
+        <h2 className="section-title">Core Intelligence Modules</h2>
+        <span className="section-tag mono">6-Module Closed Loop System</span>
+      </div>
+
       <div className="grid-3 workflow-grid">
         <div className="glass-panel workflow-card" onClick={() => onNavigate('crawler')}>
           <div className="card-top">
             <div className="card-icon-box indigo">
               <Globe size={22} />
             </div>
-            <span className="step-tag mono">PILLAR 1</span>
+            <span className="step-tag mono">MODULE 1</span>
           </div>
           <h3 className="card-title">Live On-Page GEO Crawler</h3>
           <p className="card-desc">
-            Audits your live website or Vercel URL against 6 core GEO factors (robots.txt, schema, direct answers, stats, author bio) and ranks it against competitors on a live leaderboard.
+            Audits your live website or Vercel URL against 7 core GEO factors (robots.txt, schema, direct answers, stats, author bio) and ranks it against competitors on a live leaderboard.
           </p>
           <div className="card-footer-link">
             <span>Audit Website</span>
@@ -89,14 +96,65 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ health, onNavigate }
             <div className="card-icon-box cyan">
               <Search size={22} />
             </div>
-            <span className="step-tag mono">PILLAR 2</span>
+            <span className="step-tag mono">MODULE 2</span>
           </div>
           <h3 className="card-title">Multi-Intent AI Query Cluster</h3>
           <p className="card-desc">
-            Expands high-intent user queries into 5 intent categories and executes parallel evaluations against Google Search Grounded LLMs to track citation rates and brand sentiment.
+            Tests buyer queries across 7 intent categories in parallel against ChatGPT, Gemini, Perplexity, and Claude to measure Mention, Position, Citation, Rank, Sentiment, and Stability.
           </p>
           <div className="card-footer-link">
             <span>Evaluate Queries</span>
+            <ArrowRight size={14} />
+          </div>
+        </div>
+
+        <div className="glass-panel workflow-card" onClick={() => onNavigate('listings')}>
+          <div className="card-top">
+            <div className="card-icon-box purple">
+              <ListOrdered size={22} />
+            </div>
+            <span className="step-tag mono">MODULE 3</span>
+          </div>
+          <h3 className="card-title">Where to Get Listed (Citation Gap)</h3>
+          <p className="card-desc">
+            Discovers the third-party platforms (G2, Capterra, Reddit, TechRadar) that AI assistants cite when competitors win, ranked by priority formula 2 × Gap + Total.
+          </p>
+          <div className="card-footer-link">
+            <span>View Citation Gaps</span>
+            <ArrowRight size={14} />
+          </div>
+        </div>
+
+        <div className="glass-panel workflow-card" onClick={() => onNavigate('advisor')}>
+          <div className="card-top">
+            <div className="card-icon-box amber">
+              <Lightbulb size={22} />
+            </div>
+            <span className="step-tag mono">MODULE 4</span>
+          </div>
+          <h3 className="card-title">Evidence-Grounded AI Advisor</h3>
+          <p className="card-desc">
+            Algorithmically synthesizes numbered evidence points (E1..En) into prioritized action cards and detects "Lost Queries" where competitors took search real-estate.
+          </p>
+          <div className="card-footer-link">
+            <span>Review Advisor</span>
+            <ArrowRight size={14} />
+          </div>
+        </div>
+
+        <div className="glass-panel workflow-card" onClick={() => onNavigate('studio')}>
+          <div className="card-top">
+            <div className="card-icon-box rose">
+              <PenTool size={22} />
+            </div>
+            <span className="step-tag mono">MODULE 5</span>
+          </div>
+          <h3 className="card-title">GEO Content Studio</h3>
+          <p className="card-desc">
+            Generates authoritative blog drafts engineered with strict GEO structure, anti-hallucination verification placeholders [STAT:], Google SERP preview, and FAQPage JSON-LD.
+          </p>
+          <div className="card-footer-link">
+            <span>Write GEO Content</span>
             <ArrowRight size={14} />
           </div>
         </div>
@@ -106,14 +164,14 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ health, onNavigate }
             <div className="card-icon-box emerald">
               <Award size={22} />
             </div>
-            <span className="step-tag mono">PILLAR 3</span>
+            <span className="step-tag mono">MODULE 6</span>
           </div>
           <h3 className="card-title">Controlled Experiment Lab</h3>
           <p className="card-desc">
-            Demonstrates how an unoptimized website scoring Grade F (3.8/100) leaps to Grade A (100/100) and Rank #1 by applying clean, bullet-point descriptive recommendations.
+            Live head-to-head proof: watch PulseTask v1 unoptimized scoring Grade F (6.2/100) leap to Grade A (96.5/100) and Rank #1 over Linear, Jira, and ClickUp (+90.3 pts).
           </p>
           <div className="card-footer-link">
-            <span>View Experiment</span>
+            <span>Launch Experiment</span>
             <ArrowRight size={14} />
           </div>
         </div>

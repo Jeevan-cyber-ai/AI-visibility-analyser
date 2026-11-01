@@ -66,6 +66,6 @@ Interactive Swagger documentation is automatically available at:
 Your API keys are stored in:
 👉 `ai_visibility_analyzer\backend\.env`
 
-* **Gemini (Google):** Active with live Google Search Grounding (`AQ.Ab8...`)
-* **Groq:** Active with `openai/gpt-oss-120b` (`gsk_6q5...`)
-* **Mistral:** Active with automatic graceful fallback if rate-limited (`mstrl_...`)
+* **Gemini (Google):** Active with live Google Search Grounding (configured in `.env`)
+* **Groq:** Active with fast LLaMA models (configured in `.env`)
+* **Mistral:** Active with automatic graceful fallback if rate-limited (configured in `.env`)

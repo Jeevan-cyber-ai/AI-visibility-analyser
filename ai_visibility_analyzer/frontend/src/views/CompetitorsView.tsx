@@ -34,14 +34,15 @@ export const CompetitorsView: React.FC<CompetitorsViewProps> = ({ onSelectForCra
     },
   ]);
 
-  const handleDiscover = async () => {
-    if (!topic.trim()) return;
+  const handleDiscover = async (topicOverride?: string) => {
+    const searchTopic = topicOverride || topic;
+    if (!searchTopic.trim()) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const data = await discoverCompetitors(topic, 5);
+      const data = await discoverCompetitors(searchTopic.trim(), 5, 'Gemini');
       if (data.competitors && data.competitors.length > 0) {
         setCompetitors(data.competitors);
       }
@@ -76,7 +77,7 @@ export const CompetitorsView: React.FC<CompetitorsViewProps> = ({ onSelectForCra
             />
             <button
               className="btn btn-primary btn-lg"
-              onClick={handleDiscover}
+              onClick={() => handleDiscover()}
               disabled={loading}
             >
               {loading ? (
@@ -98,16 +99,19 @@ export const CompetitorsView: React.FC<CompetitorsViewProps> = ({ onSelectForCra
         <div className="topic-presets">
           <span className="presets-label">Popular Verticals:</span>
           {[
-            'Agile Sprint Project Management',
             'Cloud Antivirus & Endpoint Security',
             'AI CRM for Sales Teams',
-            'Cloud Hosting Platforms',
+            'Ecommerce & Headless Commerce',
+            'HR & Global Payroll Systems',
+            'Customer Support & Helpdesk',
+            'Agile Sprint Project Management',
           ].map((t) => (
             <button
               key={t}
               className="preset-chip"
               onClick={() => {
                 setTopic(t);
+                handleDiscover(t);
               }}
             >
               {t}

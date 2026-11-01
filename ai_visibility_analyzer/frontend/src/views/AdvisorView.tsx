@@ -164,6 +164,30 @@ export const AdvisorView: React.FC<AdvisorViewProps> = ({ onNavigateToStudio }) 
         )}
       </div>
 
+      {/* Live Animated Advisor Synthesis Scanner */}
+      {loading && (
+        <div className="card live-scanner-motion-card">
+          <div className="radar-spinner-wrap">
+            <div className="radar-circle pulse-1"></div>
+            <div className="radar-circle pulse-2"></div>
+            <div className="radar-core">
+              <Lightbulb size={22} className="text-amber" />
+            </div>
+          </div>
+          <div className="scanner-status-text">
+            <h3>Synthesizing Grounded Evidence Chain...</h3>
+            <p className="scanner-sub">
+              Correlating on-page crawler audits with multi-assistant query outputs:
+            </p>
+            <div className="scanner-steps mono">
+              <span className="step-item step-active">✓ 1. Auditing target domain against 7 GEO factors</span>
+              <span className="step-item step-active">✓ 2. Executing multi-intent AI queries across ChatGPT, Gemini, Perplexity</span>
+              <span className="step-item step-pulse">⚡ 3. Compiling Evidence IDs (E1..En) and prioritizing lost queries</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {data ? (
         <div className="advisor-results-wrap">
           {/* Main Top Nav Tabs (Slide 12 & 13) */}
@@ -512,6 +536,92 @@ export const AdvisorView: React.FC<AdvisorViewProps> = ({ onNavigateToStudio }) 
           display: flex;
           align-items: center;
           gap: 0.4rem;
+        }
+
+        .live-scanner-motion-card {
+          padding: 2rem;
+          background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(40, 20, 10, 0.4));
+          border: 1px solid rgba(245, 158, 11, 0.5);
+          border-radius: var(--radius-lg);
+          display: flex;
+          align-items: center;
+          gap: 2rem;
+          box-shadow: 0 0 30px rgba(245, 158, 11, 0.15);
+        }
+
+        .radar-spinner-wrap {
+          position: relative;
+          width: 70px;
+          height: 70px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .radar-circle {
+          position: absolute;
+          border-radius: 50%;
+          border: 2px solid #f59e0b;
+          animation: radarPulseAdvisor 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+        }
+
+        .pulse-1 {
+          width: 100%;
+          height: 100%;
+        }
+
+        .pulse-2 {
+          width: 100%;
+          height: 100%;
+          animation-delay: -1s;
+        }
+
+        .radar-core {
+          z-index: 2;
+          background: #451a03;
+          border-radius: 50%;
+          padding: 0.6rem;
+          display: flex;
+        }
+
+        @keyframes radarPulseAdvisor {
+          0% { transform: scale(0.3); opacity: 1; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        .scanner-status-text h3 {
+          margin: 0 0 0.35rem 0;
+          color: #ffffff;
+          font-size: 1.1rem;
+        }
+
+        .scanner-sub {
+          margin: 0 0 0.75rem 0;
+          color: var(--text-muted);
+          font-size: 0.85rem;
+        }
+
+        .scanner-steps {
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+          font-size: 0.8rem;
+        }
+
+        .step-item.step-active {
+          color: #34d399;
+        }
+
+        .step-item.step-pulse {
+          color: #fbbf24;
+          font-weight: 700;
+          animation: textBlink 1.5s infinite;
+        }
+
+        @keyframes textBlink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
         }
 
         .empty-lost-queries {

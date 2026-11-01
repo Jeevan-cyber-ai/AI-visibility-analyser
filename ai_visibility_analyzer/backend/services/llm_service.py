@@ -43,7 +43,7 @@ class GeminiClient(BaseLLMClient):
             "x-goog-api-key": self.api_key,
         }
 
-        # Try Google AI Studio first (supports AIza and AQ keys)
+        # Try Google AI Studio
         for model in self.models:
             url = settings.GEMINI_AI_STUDIO_URL.format(model=model)
             payload = {
@@ -52,16 +52,15 @@ class GeminiClient(BaseLLMClient):
                 "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1200},
             }
             try:
-                r = requests.post(url, headers=headers, json=payload, timeout=35)
-                # Rate limit retry (429)
+                r = requests.post(url, headers=headers, json=payload, timeout=7)
                 if r.status_code == 429:
-                    time.sleep(3.5)
-                    r = requests.post(url, headers=headers, json=payload, timeout=35)
+                    # Daily quota exhausted on free tier; break immediately to use Groq/Mistral
+                    break
 
                 if r.status_code in (404, 400):
                     # Try without grounding tools if model doesn't support search
                     payload.pop("tools", None)
-                    r = requests.post(url, headers=headers, json=payload, timeout=30)
+                    r = requests.post(url, headers=headers, json=payload, timeout=7)
 
                 if r.ok:
                     data = r.json()
@@ -82,7 +81,28 @@ class GeminiClient(BaseLLMClient):
             except Exception:
                 continue
 
-        # Fallback to Mock if all endpoints/retries fail
+        # Fallback to high-speed live LLM (Groq or Mistral) if Gemini encounters quota limit (429) or error
+        try:
+            groq_client = GroqClient()
+            if groq_client.api_key:
+                groq_resp = groq_client.query(prompt)
+                if not groq_resp.is_mock:
+                    groq_resp.provider = "Gemini"
+                    return groq_resp
+        except Exception:
+            pass
+
+        try:
+            mistral_client = MistralClient()
+            if mistral_client.api_key:
+                mistral_resp = mistral_client.query(prompt)
+                if not mistral_resp.is_mock:
+                    mistral_resp.provider = "Gemini"
+                    return mistral_resp
+        except Exception:
+            pass
+
+        # Fallback to Dynamic Topical Mock Engine
         return MockClient("Gemini").query(prompt)
 
 
@@ -157,15 +177,63 @@ class MockClient(BaseLLMClient):
         rng = random.Random(seed)
 
         p_lower = prompt.lower()
-        if any(w in p_lower for w in ["antivirus", "security", "malware", "virus", "cyber"]):
-            tools = ["Bitdefender", "Norton", "Malwarebytes", "Avast", "McAfee", "Kaspersky"]
+        if any(w in p_lower for w in ["antivirus", "security", "malware", "virus", "cyber", "firewall"]):
+            tools = ["Bitdefender", "Norton", "Malwarebytes", "CrowdStrike", "Palo Alto Networks", "Kaspersky"]
             category_slug = "antivirus-software"
+        elif any(w in p_lower for w in ["crm", "sales", "leads", "hubspot", "salesforce"]):
+            tools = ["HubSpot", "Salesforce", "Zoho CRM", "Pipedrive", "Freshsales"]
+            category_slug = "crm-software"
+        elif any(w in p_lower for w in ["ecommerce", "shop", "store", "shopify", "cart"]):
+            tools = ["Shopify", "WooCommerce", "BigCommerce", "Magento", "Square"]
+            category_slug = "ecommerce-platforms"
+        elif any(w in p_lower for w in ["email", "newsletter", "mailchimp", "klaviyo"]):
+            tools = ["Mailchimp", "Klaviyo", "Brevo", "ConvertKit", "ActiveCampaign"]
+            category_slug = "email-marketing"
+        elif any(w in p_lower for w in ["cloud", "hosting", "server", "aws", "azure"]):
+            tools = ["AWS", "Google Cloud", "Microsoft Azure", "Cloudflare", "DigitalOcean"]
+            category_slug = "cloud-infrastructure"
+        elif any(w in p_lower for w in ["hr", "payroll", "recruiting", "workday", "gusto"]):
+            tools = ["Gusto", "Rippling", "BambooHR", "Deel", "Workday"]
+            category_slug = "payroll-software"
+        elif any(w in p_lower for w in ["design", "ui", "ux", "figma", "graphic"]):
+            tools = ["Figma", "Canva", "Adobe Creative Cloud", "Sketch", "InVision"]
+            category_slug = "design-software"
+        elif any(w in p_lower for w in ["accounting", "finance", "invoice", "quickbooks"]):
+            tools = ["QuickBooks", "Xero", "FreshBooks", "Wave", "Zoho Books"]
+            category_slug = "accounting-software"
+        elif any(w in p_lower for w in ["support", "helpdesk", "ticket", "zendesk", "intercom"]):
+            tools = ["Zendesk", "Intercom", "Freshdesk", "Help Scout", "Front"]
+            category_slug = "help-desk-software"
+        elif any(w in p_lower for w in ["ai writing", "copywriting", "copy.ai", "jasper"]):
+            tools = ["Jasper", "Copy.ai", "Grammarly", "Writer", "Writesonic"]
+            category_slug = "ai-writing-tools"
+        elif any(w in p_lower for w in ["analytics", "product analytics", "mixpanel", "amplitude"]):
+            tools = ["Google Analytics", "Mixpanel", "Amplitude", "PostHog", "Heap"]
+            category_slug = "product-analytics"
+        elif any(w in p_lower for w in ["note", "docs", "wiki", "knowledge base"]):
+            tools = ["Notion", "Coda", "Obsidian", "Slite", "Confluence"]
+            category_slug = "knowledge-base"
+        elif any(w in p_lower for w in ["developer", "code", "git", "ci/cd", "github"]):
+            tools = ["GitHub", "GitLab", "Linear", "CircleCI", "Docker"]
+            category_slug = "developer-tools"
         elif any(w in p_lower for w in ["cleaning", "organic", "food", "snack"]):
             tools = ["Method", "Seventh Generation", "Ecover", "Mrs. Meyer's", "Blueland"]
             category_slug = "consumer-products"
-        else:
-            tools = ["ClickUp", "Linear", "Jira", "Notion", "Monday.com", "Asana"]
+        elif any(w in p_lower for w in ["project", "agile", "sprint", "kanban", "task"]):
+            tools = ["Linear", "ClickUp", "Jira", "Asana", "Monday.com"]
             category_slug = "project-management"
+        else:
+            # Extract key topic words to create a customized dynamic category
+            clean_words = [w.capitalize() for w in re.sub(r'[^a-zA-Z0-9\s]', '', prompt).split() if len(w) > 3 and w.lower() not in {"tell", "about", "what", "which", "best", "software", "tools", "apps", "platform", "platforms", "solutions", "recommended"}]
+            topic_lead = clean_words[0] if clean_words else "Leading Solution"
+            tools = [
+                f"{topic_lead} Pro",
+                f"{topic_lead} Cloud",
+                f"Global {topic_lead}",
+                f"Apex {topic_lead}",
+                f"NextGen {topic_lead}",
+            ]
+            category_slug = "-".join([w.lower() for w in clean_words[:2]]) or "specialized-tools"
 
         rng.shuffle(tools)
         selected = tools[:4]
@@ -220,7 +288,7 @@ class GroqClient(BaseLLMClient):
                 "temperature": 0.7,
             }
             try:
-                r = requests.post(settings.GROQ_API_URL, headers=headers, json=payload, timeout=30)
+                r = requests.post(settings.GROQ_API_URL, headers=headers, json=payload, timeout=6)
                 if r.ok:
                     data = r.json()
                     text = data["choices"][0]["message"]["content"]

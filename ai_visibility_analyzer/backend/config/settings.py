@@ -13,7 +13,7 @@ load_dotenv(BACKEND_DIR / ".env")
 
 
 class Settings:
-    # API Keys
+    # API Keys loaded from environment (.env in local or Render environment variables)
     GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")
     MISTRAL_API_KEY: str | None = os.getenv("MISTRAL_API_KEY")
@@ -23,7 +23,7 @@ class Settings:
 
     # Default Models
     GEMINI_MODELS: list[str] = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-flash-latest"]
-    GROQ_MODELS: list[str] = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
+    GROQ_MODELS: list[str] = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
     MISTRAL_MODELS: list[str] = ["mistral-small-latest", "open-mistral-7b", "mistral-large-latest"]
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     PERPLEXITY_MODEL: str = os.getenv("PERPLEXITY_MODEL", "sonar")

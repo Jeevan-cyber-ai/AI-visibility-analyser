@@ -351,14 +351,26 @@ def _build_evidence_list(
         target = comp_audit.get("target_audit", {})
         factors = target.get("factors", {})
         for factor_name, factor_data in factors.items():
-            if isinstance(factor_data, dict) and not factor_data.get("passes", True):
-                evidence.append({
-                    "id": f"E{eid}",
-                    "finding": f"On-page GEO factor failed: {factor_data.get('label', factor_name)} — {factor_data.get('detail', '')}",
-                    "category": "geo_factor",
-                    "severity": "medium",
-                })
-                eid += 1
+            if isinstance(factor_data, dict):
+                st = factor_data.get("status")
+                f_name = factor_data.get("name", factor_name.replace("_", " ").title())
+                f_summary = factor_data.get("summary", "")
+                if st in ("FAILED", "WARNING"):
+                    evidence.append({
+                        "id": f"E{eid}",
+                        "finding": f"On-page GEO factor {st}: {f_name} scored {factor_data.get('score', 0):.0f}/100 — {f_summary}",
+                        "category": "geo_factor",
+                        "severity": "high" if st == "FAILED" else "medium",
+                    })
+                    eid += 1
+                elif st == "PASSED" and eid <= 6:
+                    evidence.append({
+                        "id": f"E{eid}",
+                        "finding": f"Verified On-Page Strength: {f_name} passed ({factor_data.get('score', 0):.0f}/100) — {f_summary}",
+                        "category": "strength",
+                        "severity": "low",
+                    })
+                    eid += 1
 
     # Evidence from citation gaps
     if gap_report and gap_report.get("observed"):
@@ -505,11 +517,12 @@ def evidence_advisor_endpoint(req: EvidenceAdvisorRequest):
             client=client,
         )
 
-        # 2. On-page audit (optional)
+        # 2. On-page audit (auto-targets brand_url if on_page_target not provided)
         comp_audit_dict = None
-        if req.on_page_target:
+        target_page = req.on_page_target or req.brand_url
+        if target_page:
             try:
-                comp_audit = CrawlerService.compare_with_competitors(req.on_page_target, req.competitors)
+                comp_audit = CrawlerService.compare_with_competitors(target_page, req.competitors)
                 comp_audit_dict = comp_audit.to_dict()
             except Exception:
                 pass

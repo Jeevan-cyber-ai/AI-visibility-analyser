@@ -104,19 +104,39 @@ export const ClusterAuditView: React.FC = () => {
     }
   };
 
-  // Preview prompts list (Slide 5 right panel)
-  const previewPromptList = [
-    { query: 'How do I choose the right team knowledge base? Give me specific options.', family: 'discovery', intent: 'problem solving' },
-    { query: 'What are the main differences between the most popular team knowledge base tools?', family: 'discovery', intent: 'comparison' },
-    { query: 'Which team knowledge base has the best integrations and ease of use?', family: 'discovery', intent: 'feature' },
-    { query: 'Are there free or low-cost team knowledge base options that are actually good?', family: 'discovery', intent: 'budget' },
-    { query: 'What are the best team knowledge base options in 2026?', family: 'discovery', intent: 'best of' },
-    { query: 'What are good alternatives to ClickUp for team knowledge base?', family: 'discovery', intent: 'alternatives' },
-    { query: "I'm an enterprise IT manager looking for a team knowledge base. What should I pick and why?", family: 'discovery', intent: 'problem solving' },
-    { query: 'Compare the leading team knowledge base options for a freelancer', family: 'discovery', intent: 'comparison' },
-    { query: 'Notion vs Coda: which is better for team knowledge base?', family: 'branded', intent: 'branded' },
-    { query: 'What is Notion and is it any good?', family: 'branded', intent: 'branded' },
-  ];
+  // Dynamically generated preview prompts based on the user's live seed query and brand URL
+  const getDynamicPreviewPrompts = () => {
+    const rawBrand = brandUrl.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split('.')[0] || 'Brand';
+    const brandName = rawBrand.charAt(0).toUpperCase() + rawBrand.slice(1);
+    const cleanTopic = seedQuery
+      .replace(/^(tell me (about|the)?|what (are|is)|show me|find me)\s*/i, '')
+      .replace(/[?.!]/g, '')
+      .trim() || 'software solutions';
+
+    const discovery = [
+      { query: `How do I choose the right ${cleanTopic}? Give me specific options.`, family: 'discovery', intent: 'problem solving' },
+      { query: `What are the main differences between the most popular ${cleanTopic} tools in 2026?`, family: 'discovery', intent: 'comparison' },
+      { query: `Which ${cleanTopic} has the best integrations and highest ease of use?`, family: 'discovery', intent: 'feature' },
+      { query: `Are there free or low-cost ${cleanTopic} options that are actually good?`, family: 'discovery', intent: 'budget' },
+      { query: `What are the highest-rated ${cleanTopic} options recommended for teams?`, family: 'discovery', intent: 'best of' },
+      { query: `What are the leading alternatives to legacy market incumbents for ${cleanTopic}?`, family: 'discovery', intent: 'alternatives' },
+      { query: `I'm an IT director looking for ${cleanTopic}. What enterprise solution should I pick and why?`, family: 'discovery', intent: 'enterprise' },
+      { query: `Compare the leading ${cleanTopic} options for high-growth startups`, family: 'discovery', intent: 'comparison' },
+      { query: `Which ${cleanTopic} has the lowest latency and fastest setup time?`, family: 'discovery', intent: 'performance' },
+      { query: `Security and compliance comparison of top ${cleanTopic} solutions`, family: 'discovery', intent: 'security' },
+    ].slice(0, discoveryPrompts);
+
+    const branded = [
+      { query: `${brandName} vs alternatives: which is better for ${cleanTopic}?`, family: 'branded', intent: 'comparison' },
+      { query: `What is ${brandName} and is it recommended for ${cleanTopic}?`, family: 'branded', intent: 'reputation' },
+      { query: `Honest review of ${brandName}: pros, cons, and pricing for ${cleanTopic}`, family: 'branded', intent: 'review' },
+      { query: `How does ${brandName} compare to other top ${cleanTopic} platforms?`, family: 'branded', intent: 'market fit' },
+    ].slice(0, brandedPrompts);
+
+    return [...discovery, ...branded];
+  };
+
+  const previewPromptList = getDynamicPreviewPrompts();
 
   return (
     <div className="cluster-view">
@@ -177,6 +197,22 @@ export const ClusterAuditView: React.FC = () => {
         <div className="depth-controls-card">
           <div className="depth-header">
             <span className="depth-title">Prompt depth</span>
+          </div>
+
+          {/* Prompt Depth Architecture Explainer */}
+          <div className="depth-explainer-banner">
+            <div className="explainer-item">
+              <span className="explainer-tag tag-discovery">1. Discovery Prompts</span>
+              <p>Unbranded buyer questions (problem-solving, comparisons, pricing). Tests if AI assistants recommend your brand organically without leading prompts.</p>
+            </div>
+            <div className="explainer-item">
+              <span className="explainer-tag tag-branded">2. Branded Prompts</span>
+              <p>Queries explicitly naming your product. Analyzes how AI portrays your reputation, strengths, and comparative advantages.</p>
+            </div>
+            <div className="explainer-item">
+              <span className="explainer-tag tag-repeats">3. Prompt Repeats</span>
+              <p>Re-runs prompts multiple times to measure Stability % (how consistently AI engines maintain the same recommendations over time).</p>
+            </div>
           </div>
 
           <div className="depth-sliders-grid">
@@ -565,6 +601,53 @@ export const ClusterAuditView: React.FC = () => {
           letter-spacing: 0.05em;
         }
 
+        .depth-explainer-banner {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1rem;
+          background: rgba(15, 23, 42, 0.6);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-md);
+          padding: 0.85rem 1rem;
+          margin-bottom: 1.25rem;
+        }
+
+        .explainer-item {
+          display: flex;
+          flex-direction: column;
+          gap: 0.3rem;
+        }
+
+        .explainer-item p {
+          margin: 0;
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          line-height: 1.35;
+        }
+
+        .explainer-tag {
+          font-size: 0.76rem;
+          font-weight: 700;
+          padding: 0.15rem 0.5rem;
+          border-radius: var(--radius-sm);
+          width: fit-content;
+        }
+
+        .tag-discovery {
+          background: rgba(99, 102, 241, 0.2);
+          color: #a5b4fc;
+        }
+
+        .tag-branded {
+          background: rgba(245, 158, 11, 0.2);
+          color: #fcd34d;
+        }
+
+        .tag-repeats {
+          background: rgba(16, 185, 129, 0.2);
+          color: #6ee7b7;
+        }
+
         .depth-sliders-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
@@ -881,7 +964,54 @@ export const ClusterAuditView: React.FC = () => {
         }
 
         @media (max-width: 900px) {
-          .depth-sliders-grid {
+          .depth-explainer-banner {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1rem;
+          background: rgba(15, 23, 42, 0.6);
+          border: 1px solid var(--border-subtle);
+          border-radius: var(--radius-md);
+          padding: 0.85rem 1rem;
+          margin-bottom: 1.25rem;
+        }
+
+        .explainer-item {
+          display: flex;
+          flex-direction: column;
+          gap: 0.3rem;
+        }
+
+        .explainer-item p {
+          margin: 0;
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          line-height: 1.35;
+        }
+
+        .explainer-tag {
+          font-size: 0.76rem;
+          font-weight: 700;
+          padding: 0.15rem 0.5rem;
+          border-radius: var(--radius-sm);
+          width: fit-content;
+        }
+
+        .tag-discovery {
+          background: rgba(99, 102, 241, 0.2);
+          color: #a5b4fc;
+        }
+
+        .tag-branded {
+          background: rgba(245, 158, 11, 0.2);
+          color: #fcd34d;
+        }
+
+        .tag-repeats {
+          background: rgba(16, 185, 129, 0.2);
+          color: #6ee7b7;
+        }
+
+        .depth-sliders-grid {
             grid-template-columns: 1fr;
           }
           .assistants-toggle-row {

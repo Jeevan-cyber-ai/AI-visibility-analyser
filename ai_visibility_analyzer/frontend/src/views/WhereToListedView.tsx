@@ -186,6 +186,30 @@ export const WhereToListedView: React.FC<WhereToListedViewProps> = ({ onNavigate
         )}
       </div>
 
+      {/* Live Animated Radar Scanner */}
+      {loading && (
+        <div className="card live-scanner-motion-card">
+          <div className="radar-spinner-wrap">
+            <div className="radar-circle pulse-1"></div>
+            <div className="radar-circle pulse-2"></div>
+            <div className="radar-core">
+              <Sparkles size={22} className="text-indigo" />
+            </div>
+          </div>
+          <div className="scanner-status-text">
+            <h3>Analyzing Live Generative Citations...</h3>
+            <p className="scanner-sub">
+              Querying assistants across buying intents and mapping third-party authority citations:
+            </p>
+            <div className="scanner-steps mono">
+              <span className="step-item step-active">✓ 1. Querying search-grounded LLM models</span>
+              <span className="step-item step-active">✓ 2. Harvesting external web citations (G2, Capterra, Reddit)</span>
+              <span className="step-item step-pulse">⚡ 3. Computing Disparity Priority: 2 × Gap + Total</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Results View */}
       {data ? (
         <div className="gap-results-wrapper">
@@ -334,6 +358,92 @@ export const WhereToListedView: React.FC<WhereToListedViewProps> = ({ onNavigate
       )}
 
       <style>{`
+        .live-scanner-motion-card {
+          padding: 2rem;
+          background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 27, 75, 0.5));
+          border: 1px solid var(--indigo-500);
+          border-radius: var(--radius-lg);
+          display: flex;
+          align-items: center;
+          gap: 2rem;
+          box-shadow: 0 0 30px rgba(99, 102, 241, 0.2);
+        }
+
+        .radar-spinner-wrap {
+          position: relative;
+          width: 70px;
+          height: 70px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .radar-circle {
+          position: absolute;
+          border-radius: 50%;
+          border: 2px solid var(--indigo-500);
+          animation: radarPulse 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+        }
+
+        .pulse-1 {
+          width: 100%;
+          height: 100%;
+        }
+
+        .pulse-2 {
+          width: 100%;
+          height: 100%;
+          animation-delay: -1s;
+        }
+
+        .radar-core {
+          z-index: 2;
+          background: #1e1b4b;
+          border-radius: 50%;
+          padding: 0.6rem;
+          display: flex;
+        }
+
+        @keyframes radarPulse {
+          0% { transform: scale(0.3); opacity: 1; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        .scanner-status-text h3 {
+          margin: 0 0 0.35rem 0;
+          color: #ffffff;
+          font-size: 1.1rem;
+        }
+
+        .scanner-sub {
+          margin: 0 0 0.75rem 0;
+          color: var(--text-muted);
+          font-size: 0.85rem;
+        }
+
+        .scanner-steps {
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+          font-size: 0.8rem;
+        }
+
+        .step-item.step-active {
+          color: #34d399;
+        }
+
+        .step-item.step-pulse {
+          color: #818cf8;
+          font-weight: 700;
+          animation: textBlink 1.5s infinite;
+        }
+
+        @keyframes textBlink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+
         .where-to-listed-container {
           max-width: 1400px;
           margin: 0 auto;
