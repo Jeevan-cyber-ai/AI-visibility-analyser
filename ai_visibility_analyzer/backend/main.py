@@ -89,21 +89,27 @@ if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
-@app.get("/", tags=["dashboard"])
-def serve_dashboard():
-    """Serves the interactive executive web dashboard."""
-    # Prioritize the fully-fledged modern Vite + React SPA build
-    if frontend_dist.exists() and (frontend_dist / "index.html").exists():
-        return FileResponse(str(frontend_dist / "index.html"))
-    
-    # Fallback to backend static file
-    index_file = static_dir / "index.html"
-    if index_file.exists():
-        return FileResponse(str(index_file))
+@app.get("/", tags=["system"])
+def api_root():
+    """Pure API Root: Returns service status, interactive docs link, and available endpoints."""
     return {
-        "message": "AI Visibility & GEO Analyzer API is running.",
+        "status": "online",
+        "service": "AI Visibility & GEO Analyzer API",
+        "version": "2.0.0",
         "docs": "/docs",
         "health": "/api/health",
+        "endpoints": {
+            "health": "/api/health",
+            "crawler_compare": "/api/crawler/compare",
+            "audit_page": "/api/crawler/audit-page",
+            "cluster_audit": "/api/audit/cluster",
+            "citation_gaps": "/api/citation-gap/analyse",
+            "advisor": "/api/advisor/evidence",
+            "content_draft": "/api/content/draft",
+            "competitors_discover": "/api/competitors/discover",
+            "queries_expand": "/api/queries/expand",
+        },
+        "frontend_app": "https://ai-visibility-analyser-3t1g.vercel.app/",
     }
 
 
