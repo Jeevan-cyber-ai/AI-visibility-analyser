@@ -13,13 +13,31 @@ import type {
   ContentDraftResponse,
 } from '../types/api';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const RAW_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const BASE_URL = RAW_BASE.replace(/\/+$/, '');
 const API_BASE = `${BASE_URL}/api`;
+
+async function parseJsonResponse<T>(res: Response, fallbackMsg: string): Promise<T> {
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await res.text();
+    if (text.trim().toLowerCase().startsWith('<!doctype') || text.trim().toLowerCase().startsWith('<html')) {
+      throw new Error(
+        'Backend not connected. Received HTML from Vercel instead of API response. Please set VITE_API_BASE_URL in Vercel Settings -> Environment Variables to your Render backend URL (e.g. https://your-backend.onrender.com) and Redeploy.'
+      );
+    }
+    throw new Error(`${fallbackMsg}: Expected JSON but received ${contentType || 'non-JSON'}`);
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || err.message || fallbackMsg);
+  }
+  return res.json();
+}
 
 export async function fetchHealth(): Promise<HealthResponse> {
   const res = await fetch(`${API_BASE}/health`);
-  if (!res.ok) throw new Error(`Health check failed: ${res.statusText}`);
-  return res.json();
+  return parseJsonResponse<HealthResponse>(res, 'Health check failed');
 }
 
 export async function auditPage(urlOrPath: string): Promise<PageAuditResult> {
@@ -28,11 +46,7 @@ export async function auditPage(urlOrPath: string): Promise<PageAuditResult> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url_or_path: urlOrPath }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Failed to audit page');
-  }
-  return res.json();
+  return parseJsonResponse<PageAuditResult>(res, 'Failed to audit page');
 }
 
 export async function compareCompetitors(
@@ -64,11 +78,7 @@ export async function compareCompetitors(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Failed to benchmark competitors');
-  }
-  return res.json();
+  return parseJsonResponse<ComparativePageAudit>(res, 'Failed to benchmark competitors');
 }
 
 export async function auditCluster(params: {
@@ -91,11 +101,10 @@ export async function auditCluster(params: {
       provider: params.provider || 'Gemini',
     }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Failed to audit query cluster');
-  }
-  return res.json();
+  return parseJsonResponse<{ cluster_summary: ClusterSummary; comparative_report: ComparativeAuditReport }>(
+    res,
+    'Failed to audit query cluster'
+  );
 }
 
 export async function runFullAudit(params: {
@@ -120,11 +129,7 @@ export async function runFullAudit(params: {
       provider: params.provider || 'Gemini',
     }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Failed to run full audit');
-  }
-  return res.json();
+  return parseJsonResponse<FullAuditResponse>(res, 'Failed to run full audit');
 }
 
 export async function discoverCompetitors(
@@ -141,11 +146,7 @@ export async function discoverCompetitors(
       provider,
     }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Failed to discover competitors');
-  }
-  return res.json();
+  return parseJsonResponse<{ competitors: CompetitorInfo[] }>(res, 'Failed to discover competitors');
 }
 
 export async function expandQueries(
@@ -166,11 +167,7 @@ export async function expandQueries(
       provider,
     }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Failed to expand queries');
-  }
-  return res.json();
+  return parseJsonResponse<{ queries: QueryVariation[] }>(res, 'Failed to expand queries');
 }
 
 export async function generateContentDraft(req: ContentDraftRequest): Promise<ContentDraftResponse> {
@@ -179,11 +176,7 @@ export async function generateContentDraft(req: ContentDraftRequest): Promise<Co
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Failed to generate content draft');
-  }
-  return res.json();
+  return parseJsonResponse<ContentDraftResponse>(res, 'Failed to generate content draft');
 }
 
 export async function fetchCitationGaps(params: {
@@ -202,11 +195,7 @@ export async function fetchCitationGaps(params: {
       provider: params.provider || 'Gemini',
     }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Failed to fetch citation gap analysis');
-  }
-  return res.json();
+  return parseJsonResponse<CitationGapResponse>(res, 'Failed to fetch citation gap analysis');
 }
 
 export async function fetchEvidenceAdvisor(params: {
@@ -227,9 +216,5 @@ export async function fetchEvidenceAdvisor(params: {
       provider: params.provider || 'Gemini',
     }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || 'Failed to fetch evidence advisor analysis');
-  }
-  return res.json();
+  return parseJsonResponse<EvidenceAdvisorResponse>(res, 'Failed to fetch evidence advisor analysis');
 }
